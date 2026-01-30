@@ -27,6 +27,38 @@ const Index = () => {
         handleRestore
     } = useDischarge();
 
+    const renderPanel = () => {
+        switch (panelMode) {
+            case "edit":
+                return (
+                    <EditPanel
+                        content={editDraft}
+                        onChange={setEditDraft}
+                        onSave={handleSaveEdit}
+                        onCancel={() => setPanelMode("none")}
+                        onDictate={handleDictate}
+                    />
+                );
+            case "voice":
+                return (
+                    <VoicePanel
+                        onTranscript={handleTranscript}
+                        onClose={() => setPanelMode("none")}
+                    />
+                );
+            case "history":
+                return (
+                    <VersionHistoryPanel
+                        onClose={() => setPanelMode("none")}
+                        onRestore={handleRestore}
+                    />
+                );
+            case "none":
+            default:
+                return null;
+        }
+    };
+
     return (
         <div className="flex min-h-screen bg-background">
             {/* Left Sidebar - Hidden on mobile, visible on tablet+ */}
@@ -67,29 +99,7 @@ const Index = () => {
                 />
 
                 {/* Conditional Panels */}
-                {panelMode === "edit" && (
-                    <EditPanel
-                        content={editDraft}
-                        onChange={setEditDraft}
-                        onSave={handleSaveEdit}
-                        onCancel={() => setPanelMode("none")}
-                        onDictate={handleDictate}
-                    />
-                )}
-
-                {panelMode === "voice" && (
-                    <VoicePanel
-                        onTranscript={handleTranscript}
-                        onClose={() => setPanelMode("none")}
-                    />
-                )}
-
-                {panelMode === "history" && (
-                    <VersionHistoryPanel
-                        onClose={() => setPanelMode("none")}
-                        onRestore={handleRestore}
-                    />
-                )}
+                {renderPanel()}
 
                 {/* Bottom Action Bar */}
                 <ActionBar
