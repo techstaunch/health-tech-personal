@@ -44,6 +44,7 @@ const Index = () => {
                     <VoicePanel
                         onTranscript={handleTranscript}
                         onClose={() => setPanelMode("none")}
+                        elevenlabsApiKey={import.meta.env.VITE_ELEVENLABS_API_KEY}
                     />
                 );
             case "history":
