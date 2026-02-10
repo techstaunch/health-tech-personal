@@ -1,15 +1,14 @@
 import { X, Mic, Square, Pause, Play, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import useVoice from "./hooks/use-voice-panel";
+import useVoice from "./hooks/use-voice-panel-v2";
 
 interface VoicePanelProps {
     onTranscript: (text: string) => void;
     onClose: () => void;
-    elevenlabsApiKey: string;
 }
 
-export const VoicePanel = ({ onTranscript, onClose, elevenlabsApiKey }: VoicePanelProps) => {
+export const VoicePanel = ({ onTranscript, onClose }: VoicePanelProps) => {
 
     const {
         isRecording,
@@ -27,7 +26,7 @@ export const VoicePanel = ({ onTranscript, onClose, elevenlabsApiKey }: VoicePan
         handleDone,
         handleCancel,
         handleRetry,
-    } = useVoice({ onTranscript, onClose, elevenlabsApiKey });
+    } = useVoice({ onTranscript, onClose });
 
     return (
         <div className="border-t border-border bg-secondary/50 p-3 md:p-4 animate-in slide-in-from-bottom duration-200">
@@ -140,7 +139,7 @@ export const VoicePanel = ({ onTranscript, onClose, elevenlabsApiKey }: VoicePan
                     <div className="mt-4 flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin text-primary" />
                         <p className="text-sm text-muted-foreground">
-                            Transcribing with ElevenLabs...
+                            Transcribing with Backend...
                         </p>
                     </div>
                 )}
