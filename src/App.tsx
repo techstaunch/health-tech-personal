@@ -7,6 +7,11 @@ import NotFound from "./pages/NotFound";
 import Discharge from "./pages/discharge";
 
 function App() {
+  const isInIframe = window.self !== window.top;
+
+  if (isInIframe) {
+    console.log("App is running inside an iframe");
+  }
 
   return (
     <TooltipProvider>
