@@ -185,7 +185,7 @@ export const VoicePanel = ({ onTranscript, onClose }: VoicePanelProps) => {
                     onClick={handleDone}
                     disabled={!transcript.trim() || isTranscribing}
                 >
-                    Insert Text
+                    Send
                 </Button>
             </div>
         </div>
