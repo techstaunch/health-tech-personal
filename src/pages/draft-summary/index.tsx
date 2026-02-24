@@ -47,7 +47,7 @@ const DraftSummary = () => {
       </main>
 
       {showVoice && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-50 flex flex-col justify-end animate-in fade-in duration-300">
           <div className="bg-card w-full max-w-3xl mx-auto rounded-t-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300">
             <VoicePanel
               onTranscript={handleTranscript}
