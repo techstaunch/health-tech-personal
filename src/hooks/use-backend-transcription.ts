@@ -39,7 +39,7 @@ export const useBackendTranscription = (
 
       const baseUrl =
         import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
-      const endpoint = `${baseUrl}/agent/voice-command`;
+      const endpoint = `${baseUrl}/voice-command`;
 
       try {
         const response = await fetch(endpoint, {
