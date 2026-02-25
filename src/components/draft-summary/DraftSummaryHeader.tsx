@@ -1,11 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { Mic, Wand2, BookOpen } from "lucide-react";
-import VersionHistoryDropdown, {
-  type VersionHistoryDropdownProps,
-} from "../discharge/VersionHistoryDropdown";
-import ReferenceViewer from "../discharge/ReferenceViewer";
-import DraftSummaryToolbar from "./DraftSummaryToolbar";
+import { BookOpen, Mic, Wand2 } from "lucide-react";
 import { useState } from "react";
+import ReferenceViewer from "../discharge/ReferenceViewer";
+import VersionHistoryDropdown, {
+    type VersionHistoryDropdownProps,
+} from "../discharge/VersionHistoryDropdown";
+import DraftSummaryToolbar from "./DraftSummaryToolbar";
 
 interface Reference {
   id: string;
@@ -78,20 +78,22 @@ const DraftSummaryHeader = ({
           <VersionHistoryDropdown {...props} />
 
           {/* References toggle */}
-          <Button
-            variant={showRefs ? "secondary" : "outline"}
-            size="sm"
-            onClick={() => setShowRefs((v) => !v)}
-            className="gap-2 rounded-full transition-colors"
-          >
-            <BookOpen className="h-4 w-4 text-muted-foreground" />
-            <span>References</span>
-            {references.length > 0 && (
-              <span className="text-[10px] bg-muted-foreground/15 text-muted-foreground px-1.5 py-0.5 rounded-full font-medium">
-                {references.length}
-              </span>
-            )}
-          </Button>
+          {references.length > 0 && (
+            <Button
+              variant={showRefs ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => setShowRefs((v) => !v)}
+              className="gap-2 rounded-full transition-colors"
+            >
+              <BookOpen className="h-4 w-4 text-muted-foreground" />
+              <span>References</span>
+              {references.length > 0 && (
+                <span className="text-[10px] bg-muted-foreground/15 text-muted-foreground px-1.5 py-0.5 rounded-full font-medium">
+                  {references.length}
+                </span>
+              )}
+            </Button>
+          )}
 
           <Button
             variant="outline"
@@ -105,7 +107,6 @@ const DraftSummaryHeader = ({
         </div>
       </header>
 
-      {/* Reference panel — rendered outside header so it doesn't affect layout */}
       <ReferenceViewer
         open={showRefs}
         onClose={() => setShowRefs(false)}
