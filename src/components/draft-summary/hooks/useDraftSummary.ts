@@ -1,5 +1,5 @@
-import dischargeData from "@/constants/JSON/mrn2034_acc2034_ai_generated_discharge_summary.json";
-import { useCallback, useEffect, useState } from "react";
+import { useDraft } from "@/providers/DraftProvider";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 export interface EditSection {
@@ -14,179 +14,183 @@ export interface EditResponse {
   message: string;
   needsClarification: boolean;
   success: boolean;
+  dirty: boolean;
+}
+
+/* ----------------------------------
+   Hardcoded for now — wire to route params or auth context later
+---------------------------------- */
+const PATIENT_ID = "mrn2096";
+const ACCOUNT_NUMBER = "acc2096";
+
+/* ----------------------------------
+   Helpers
+---------------------------------- */
+
+function cleanTitle(title: string) {
+  return title.trim().replace(/:+$/, "").replace(/\s+/g, " ");
+}
+
+function sectionsToHtml(sections: any[]): string {
+  if (!sections?.length) return "";
+  return sections
+    .map(
+      (s) =>
+        `<h3><strong>${cleanTitle(s.title)}</strong></h3><p>${String(s.content).replace(/\n/g, "<br/>")}</p><br/>`,
+    )
+    .join("");
 }
 
 export const useDraftSummary = () => {
+  const {
+    prepareDraft,
+    invokeAgent,
+    commitDraft,
+    // discardDraft,
+    currentVersion,
+    dirty,
+    history,
+    rollback,
+    lastEdits,
+    getVersionSnapshot,
+    sections,
+    // metadata,
+  } = useDraft();
+
   const [content, setContent] = useState("");
   const [showVoice, setShowVoice] = useState(false);
   const [editor, setEditor] = useState<any>(null);
-
-  const formatJsonToHtml = useCallback((data: any) => {
-    let html = "";
-    Object.entries(data).forEach(([key, value]) => {
-      if (key === "References") return;
-      html += `<h3><strong>${key}</strong></h3>`;
-      html += `<p>${String(value).replace(/\n/g, "<br/>")}</p><br/>`;
-    });
-    return html;
-  }, []);
-
-  // Initialize content from local storage or JSON template
-  //   useEffect(() => {
-  //     const saved = localStorage.getItem("draft_summary_content");
-  //     if (saved && saved !== "<p></p>" && saved !== "") {
-  //       setContent(saved);
-  //     } else {
-  //       const initialHtml = formatJsonToHtml(dischargeData);
-  //       setContent(initialHtml);
-  //       localStorage.setItem("draft_summary_content", initialHtml);
-  //     }
-  //   }, [formatJsonToHtml]);
-
   const [isPreparing, setIsPreparing] = useState(false);
-  const [prepareError, setPrepareError] = useState<string | null>(null);
-  function cleanTitle(title: string) {
-    return title
-      .trim()
-      .replace(/:+$/, "") // remove trailing colons
-      .replace(/\s+/g, " ");
-  }
+  const [loading, setLoading] = useState(false);
+  const [showDiff, setShowDiff] = useState(false);
 
-  function sectionsToCleanObject(response: { data: { sections: any[] } }) {
-    if (!response?.data?.sections) return {};
+  const [previewVersion, setPreviewVersion] = useState<string | null>(null);
+  const [previewSections, setPreviewSections] = useState<any[] | null>(null);
+  const [isPreviewing, setIsPreviewing] = useState(false);
 
-    return response.data.sections.reduce(
-      (result: { [x: string]: any }, section: { title: any; content: any }) => {
-        const key = cleanTitle(section.title);
-        result[key] = section.content;
-        return result;
-      },
-      {},
-    );
-  }
-  // Call prepare-draft API once on mount
+  // Tracks the HTML of the active (non-preview) version so we can restore it
+  const currentHtmlRef = useRef("");
+
+  const hasPrepared = useRef(false);
+
+  /* ----------------------------------
+     Prepare Draft (on mount)
+  ---------------------------------- */
+
   useEffect(() => {
-    let isMounted = true;
-    const prepareDraft = async () => {
-      if (isPreparing) return;
+    if (hasPrepared.current) return;
+    hasPrepared.current = true;
 
-      setIsPreparing(true);
-      setPrepareError(null);
-
-      // Filter out References and wrap in draft key as per API requirement
-      const { References, ...cleanData } = dischargeData as any;
-      const payload = { draft: cleanData };
-
-      const baseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+    const init = async () => {
       try {
-        const response = await fetch(`${baseUrl}/agent/prepare-draft`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to prepare draft: ${response.statusText}`);
-        }
-
-        if (isMounted) {
-          console.log("Draft prepared successfully");
-        }
-        const result = await response.json();
-        const res = sectionsToCleanObject(result as any);
-        console.log("res,res", res, result);
-        setContent(formatJsonToHtml(res));
-      } catch (error) {
-        if (isMounted) {
-          const message =
-            error instanceof Error
-              ? error.message
-              : "An unknown error occurred";
-          setPrepareError(message);
-          console.error("Error preparing draft:", error);
-          toast.error("Failed to prepare draft summary patterns");
-        }
+        setIsPreparing(true);
+        await prepareDraft(PATIENT_ID, ACCOUNT_NUMBER);
+      } catch {
+        toast.error("Failed to prepare draft");
       } finally {
-        if (isMounted) {
-          setIsPreparing(false);
-        }
+        setIsPreparing(false);
       }
     };
 
-    prepareDraft();
+    init();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    return () => {
-      isMounted = false;
-    };
-  }, []); // Empty dependency array ensures it runs once on mount
+  useEffect(() => {
+    if (!sections?.length || previewVersion) return;
+    const html = sectionsToHtml(sections);
+    currentHtmlRef.current = html;
+    setContent(html);
+    if (editor) editor.commands.setContent(html);
+  }, [sections]);
 
   const handleContentChange = useCallback((newContent: string) => {
     setContent(newContent);
-    localStorage.setItem("draft_summary_content", newContent);
   }, []);
 
-  const [loading, setLoading] = useState(false);
-  const [editResponse, setEditResponse] = useState<EditResponse | null>(null);
-  const [showDiff, setShowDiff] = useState(false);
-
-  const handleTranscript = useCallback(async (text: string) => {
-    try {
-      setShowDiff(true);
-      setLoading(true);
-      const baseUrl =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
-
-      const endpoint = `${baseUrl}/agent/invoke`;
-
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messages: [{ role: "user", content: text }],
-        }),
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Request failed: ${errText}`);
+  const handleTranscript = useCallback(
+    async (text: string) => {
+      try {
+        setLoading(true);
+        setShowDiff(true);
+        await invokeAgent([{ role: "user", content: text }]);
+        toast.success("AI edit applied");
+      } catch (err: any) {
+        toast.error(err.message);
+      } finally {
+        setLoading(false);
       }
+    },
+    [invokeAgent],
+  );
 
-      const data = await response.json();
-      setEditResponse(data.data);
-      console.log(data);
-    } catch (error: any) {
-      setLoading(false);
-      console.error("Error:", error.message || error);
-    } finally {
-      setLoading(false);
+  const handleSave = useCallback(async () => {
+    try {
+      await commitDraft("anonymous");
+      currentHtmlRef.current = content;
+      toast.success("Version committed");
+    } catch (err: any) {
+      toast.error(err.message);
     }
-    // if (editor) {
-    //     editor.commands.insertContent(`<p>${text}</p>`);
-    //     handleContentChange(editor.getHTML());
-    // }
-    // setShowVoice(false);
-    // toast.success("Transcript added to draft");
-  }, []);
-
-  const handleSave = useCallback(() => {
-    localStorage.setItem("draft_summary_content", content);
-    toast.success("Draft saved successfully");
-  }, [content]);
+  }, [commitDraft, content]);
 
   const handleRefresh = useCallback(() => {
-    const initialHtml = formatJsonToHtml(dischargeData);
-    if (editor) {
-      editor.commands.setContent(initialHtml);
-    }
-    setContent(initialHtml);
-    localStorage.setItem("draft_summary_content", initialHtml);
-    toast.success("Editor refreshed from JSON template");
-  }, [editor, formatJsonToHtml]);
+    const html = sectionsToHtml(sections);
+    if (editor) editor.commands.setContent(html);
+    setContent(html);
+    currentHtmlRef.current = html;
+    toast.success("Editor refreshed");
+  }, [editor, sections]);
+
+  const handlePreviewVersion = useCallback(
+    async (version: string) => {
+      if (version === currentVersion) {
+        setPreviewVersion(null);
+        setPreviewSections(null);
+        setContent(currentHtmlRef.current);
+        if (editor) editor.commands.setContent(currentHtmlRef.current);
+        return;
+      }
+
+      try {
+        setIsPreviewing(true);
+        const snapshot = await getVersionSnapshot(version);
+        if (snapshot) {
+          setPreviewVersion(version);
+          setPreviewSections(snapshot.sections);
+          const html = sectionsToHtml(snapshot.sections);
+          setContent(html);
+          if (editor) editor.commands.setContent(html);
+        }
+      } catch (err: any) {
+        toast.error(err.message);
+      } finally {
+        setIsPreviewing(false);
+      }
+    },
+    [currentVersion, getVersionSnapshot, editor],
+  );
+
+  const handleCheckoutVersion = useCallback(
+    async (version: string) => {
+      try {
+        await rollback(version);
+        setPreviewVersion(null);
+        setPreviewSections(null);
+        toast.success(`Checked out ${version}`);
+      } catch (err: any) {
+        toast.error(err.message);
+      }
+    },
+    [rollback],
+  );
+
+  const handleRollback = useCallback(
+    async (version: string) => {
+      if (!version) return;
+      await rollback(version);
+    },
+    [rollback],
+  );
 
   return {
     content,
@@ -195,14 +199,26 @@ export const useDraftSummary = () => {
     editor,
     setEditor,
     isPreparing,
-    prepareError,
     handleContentChange,
     handleTranscript,
     handleSave,
     handleRefresh,
     loading,
-    editResponse,
     showDiff,
     setShowDiff,
+    currentVersion,
+    dirty,
+    history,
+    lastEdits,
+    // metadata,
+    rollback,
+    commitDraft,
+    // discardDraft,
+    previewVersion,
+    previewSections,
+    isPreviewing,
+    handlePreviewVersion,
+    handleCheckoutVersion,
+    handleRollback,
   };
 };
