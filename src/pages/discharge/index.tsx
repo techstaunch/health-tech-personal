@@ -44,6 +44,7 @@ const Index = () => {
                     <VoicePanel
                         onTranscript={handleTranscript}
                         onClose={() => setPanelMode("none")}
+                        open={false}
                     />
                 );
             case "history":
