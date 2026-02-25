@@ -120,3 +120,12 @@
     @apply bg-background text-foreground;
   }
 }
+
+
+.clinical-heading {
+  @apply mt-6 mb-2 text-sm font-semibold text-foreground border-b border-border pb-1;
+}
+
+.clinical-text {
+  @apply text-sm leading-relaxed text-foreground mb-2 max-w-[72ch];
+}
