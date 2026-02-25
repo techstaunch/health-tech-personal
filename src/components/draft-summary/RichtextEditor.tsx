@@ -39,8 +39,7 @@ const RichtextEditor = ({ content, onChange, onEditorReady }: RichtextEditorProp
             onEditorReady(editor);
         }
     }, [editor, onEditorReady]);
-
-    // Update editor content when props change (only if different to avoid cursor jumps)
+ 
     useEffect(() => {
         if (editor && content !== editor.getHTML()) {
             editor.commands.setContent(content, { emitUpdate: false });

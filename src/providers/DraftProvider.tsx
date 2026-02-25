@@ -47,6 +47,8 @@ interface DraftContextValue {
 
   invokeAgent: (messages: any[]) => Promise<void>;
 
+  discardDraft: () => Promise<void>;
+
   commitDraft: (createdBy: string) => Promise<void>;
 
   rollback: (version: string) => Promise<void>;
@@ -55,10 +57,6 @@ interface DraftContextValue {
 }
 
 const DraftContext = createContext<DraftContextValue | null>(null);
-
-/* ----------------------------------
-   Config
----------------------------------- */
 
 const BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v2";
@@ -163,6 +161,17 @@ export const DraftProvider: React.FC<{
     },
     [api, patientId, accountNumber],
   );
+  const discardDraft = useCallback(async () => {
+    if (!patientId || !accountNumber) return;
+    // await api(`/drafts/${patientId}/${accountNumber}/discard`, {
+    //   method: "POST",
+    //   headers: JSON_HEADERS,
+    // });
+    setDirty(false);
+    setLastEdits(null);
+    await loadDraft(patientId, accountNumber);
+    toast.info("No changes made");
+  }, [api, patientId, accountNumber, loadDraft]);
 
   const commitDraft = useCallback(
     async (createdBy: string) => {
@@ -183,7 +192,7 @@ export const DraftProvider: React.FC<{
         loadHistory(patientId, accountNumber),
       ]);
 
-      toast.success("Version saved");
+      toast.success("Changes applied.");
     },
     [api, patientId, accountNumber, loadDraft, loadHistory],
   );
@@ -238,6 +247,7 @@ export const DraftProvider: React.FC<{
 
         dirty,
         lastEdits,
+        discardDraft,
 
         prepareDraft,
         invokeAgent,

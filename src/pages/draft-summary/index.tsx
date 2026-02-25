@@ -1,11 +1,8 @@
 import EditDiffViewer from "@/components/discharge/EditDiffViewer";
 import { VoicePanel } from "@/components/discharge/VoicePanel";
 import DraftSummaryHeader from "@/components/draft-summary/DraftSummaryHeader";
-import DraftSummaryToolbar from "@/components/draft-summary/DraftSummaryToolbar";
 import { useDraftSummary } from "@/components/draft-summary/hooks/useDraftSummary";
 import RichtextEditor from "@/components/draft-summary/RichtextEditor";
-import { Button } from "@/components/ui/button";
-import { RotateCcw, X } from "lucide-react";
 
 const DraftSummary = () => {
   const {
@@ -27,12 +24,11 @@ const DraftSummary = () => {
     lastEdits,
     loading,
     commitDraft,
-    // discardDraft,
+    handleDiscard,
     previewVersion,
     isPreviewing,
     handlePreviewVersion,
-    handleCheckoutVersion,
-    handleRollback,
+    handleRollback
   } = useDraftSummary();
 
   return (
@@ -42,72 +38,16 @@ const DraftSummary = () => {
         onVoiceClick={() => setShowVoice(true)}
         onSave={handleSave}
         isPreparing={isPreparing}
+        versions={history}
+        currentVersion={currentVersion}
+        previewVersion={previewVersion}
+        onPreview={handlePreviewVersion}
+        onRestore={handleRollback}
+        onCompare={handlePreviewVersion}
+        editor={editor}
+        dirty={dirty}
+        isPreviewing={isPreviewing}
       />
-
-      <div className="px-6 py-2 flex items-center justify-between border-b bg-muted/20">
-        <div className="flex items-center gap-3 text-xs">
-          {currentVersion && (
-            <span className="px-2 py-1 bg-background border rounded-md">
-              {currentVersion}
-            </span>
-          )}
-
-          {dirty && (
-            <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-md">
-              Unsaved changes
-            </span>
-          )}
-
-          {previewVersion && (
-            <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-md">
-              Previewing {previewVersion}
-            </span>
-          )}
-          {history.length > 0 && (
-            <select
-              className="px-2 py-1 text-xs border rounded-md bg-background"
-              value={previewVersion ?? currentVersion ?? ""}
-              onChange={(e) => handlePreviewVersion(e.target.value)}
-            >
-              {history.map((h) => (
-                <option key={h.version} value={h.version}>
-                  {h.version}
-                  {h.isRollback ? " (rollback)" : ""}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          {previewVersion && previewVersion !== currentVersion && (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={isPreviewing}
-              onClick={() => handleCheckoutVersion(previewVersion)}
-            >
-              Checkout {previewVersion}
-            </Button>
-          )}
-
-          {!previewVersion && (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!currentVersion || history.length <= 1}
-              onClick={() =>
-                handleRollback(history[history.length - 2]?.version)
-              }
-            >
-              <RotateCcw className="h-4 w-4 mr-1" />
-              Rollback
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <DraftSummaryToolbar editor={editor} />
 
       <main className="flex-1 p-4 md:p-8 overflow-auto flex justify-center bg-muted/10">
         <div className="w-full max-w-4xl bg-card border rounded-xl shadow-lg p-6 md:p-10 relative">
@@ -120,41 +60,24 @@ const DraftSummary = () => {
       </main>
 
       {showVoice && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40 backdrop-blur-sm">
-          <div className="bg-card w-full max-w-3xl mx-auto rounded-t-3xl shadow-2xl overflow-hidden">
-            <VoicePanel
-              onTranscript={handleTranscript}
-              onClose={() => setShowVoice(false)}
-            />
-          </div>
-        </div>
+        <VoicePanel
+          onTranscript={handleTranscript}
+          onClose={() => setShowVoice(false)}
+          open={showVoice}
+        />
       )}
 
       {showDiff && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-background w-full max-w-5xl max-h-[85vh] rounded-xl shadow-lg flex flex-col">
-            <div className="flex items-center justify-between px-4 py-3 border-b">
-              <h3 className="text-sm font-semibold">Edit Preview</h3>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowDiff(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4">
-              <EditDiffViewer
-                editResponse={lastEdits as any}
-                loading={loading}
-                commitDraft={commitDraft}
-                // discardDraft={discardDraft}
-                onClose={() => setShowDiff(false)}
-              />
-            </div>
-          </div>
+        <div className="fixed bottom-0 left-0 right-0 z-40 shadow-[0_-4px_24px_rgba(0,0,0,0.08)]">
+          <EditDiffViewer
+            editResponse={lastEdits as any}
+            loading={loading}
+            commitDraft={commitDraft}
+            onClose={async () => {
+              setShowDiff(false);
+            }}
+            handleDiscard={handleDiscard}
+          />
         </div>
       )}
     </div>

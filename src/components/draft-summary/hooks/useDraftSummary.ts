@@ -17,15 +17,8 @@ export interface EditResponse {
   dirty: boolean;
 }
 
-/* ----------------------------------
-   Hardcoded for now — wire to route params or auth context later
----------------------------------- */
 const PATIENT_ID = "mrn2096";
 const ACCOUNT_NUMBER = "acc2096";
-
-/* ----------------------------------
-   Helpers
----------------------------------- */
 
 function cleanTitle(title: string) {
   return title.trim().replace(/:+$/, "").replace(/\s+/g, " ");
@@ -46,7 +39,7 @@ export const useDraftSummary = () => {
     prepareDraft,
     invokeAgent,
     commitDraft,
-    // discardDraft,
+    discardDraft,
     currentVersion,
     dirty,
     history,
@@ -54,7 +47,6 @@ export const useDraftSummary = () => {
     lastEdits,
     getVersionSnapshot,
     sections,
-    // metadata,
   } = useDraft();
 
   const [content, setContent] = useState("");
@@ -68,15 +60,12 @@ export const useDraftSummary = () => {
   const [previewSections, setPreviewSections] = useState<any[] | null>(null);
   const [isPreviewing, setIsPreviewing] = useState(false);
 
-  // Tracks the HTML of the active (non-preview) version so we can restore it
   const currentHtmlRef = useRef("");
-
   const hasPrepared = useRef(false);
 
   /* ----------------------------------
-     Prepare Draft (on mount)
+     Init
   ---------------------------------- */
-
   useEffect(() => {
     if (hasPrepared.current) return;
     hasPrepared.current = true;
@@ -95,13 +84,14 @@ export const useDraftSummary = () => {
     init();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Sync editor when sections update (and not in preview mode)
   useEffect(() => {
     if (!sections?.length || previewVersion) return;
     const html = sectionsToHtml(sections);
     currentHtmlRef.current = html;
     setContent(html);
     if (editor) editor.commands.setContent(html);
-  }, [sections]);
+  }, [sections]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleContentChange = useCallback((newContent: string) => {
     setContent(newContent);
@@ -141,6 +131,10 @@ export const useDraftSummary = () => {
     toast.success("Editor refreshed");
   }, [editor, sections]);
 
+  /* ----------------------------------
+     Preview — read only, no DB writes
+     Clicking current version exits preview
+  ---------------------------------- */
   const handlePreviewVersion = useCallback(
     async (version: string) => {
       if (version === currentVersion) {
@@ -170,13 +164,18 @@ export const useDraftSummary = () => {
     [currentVersion, getVersionSnapshot, editor],
   );
 
-  const handleCheckoutVersion = useCallback(
+  /* ----------------------------------
+     Restore — creates new version from snapshot (append-only audit trail)
+     Exits preview mode after restoring
+  ---------------------------------- */
+  const handleRollback = useCallback(
     async (version: string) => {
+      if (!version) return;
       try {
         await rollback(version);
         setPreviewVersion(null);
         setPreviewSections(null);
-        toast.success(`Checked out ${version}`);
+        // sections useEffect will re-sync the editor automatically
       } catch (err: any) {
         toast.error(err.message);
       }
@@ -184,13 +183,18 @@ export const useDraftSummary = () => {
     [rollback],
   );
 
-  const handleRollback = useCallback(
-    async (version: string) => {
-      if (!version) return;
-      await rollback(version);
-    },
-    [rollback],
-  );
+  /* ----------------------------------
+     Discard — resets mutable sections table to last committed version
+     Called when user cancels the diff viewer
+  ---------------------------------- */
+  const handleDiscard = useCallback(async () => {
+    try {
+      await discardDraft();
+      // sections useEffect will re-sync editor automatically
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  }, [discardDraft]);
 
   return {
     content,
@@ -210,15 +214,14 @@ export const useDraftSummary = () => {
     dirty,
     history,
     lastEdits,
-    // metadata,
     rollback,
     commitDraft,
-    // discardDraft,
+    discardDraft,
+    handleDiscard,
     previewVersion,
     previewSections,
     isPreviewing,
     handlePreviewVersion,
-    handleCheckoutVersion,
     handleRollback,
   };
 };
