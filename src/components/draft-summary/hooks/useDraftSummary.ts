@@ -20,20 +20,126 @@ export interface EditResponse {
 const PATIENT_ID = "mrn2096";
 const ACCOUNT_NUMBER = "acc2096";
 
-function cleanTitle(title: string) {
-  return title.trim().replace(/:+$/, "").replace(/\s+/g, " ");
+function escapeHtml(text: string) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
+function formatInline(text: string) {
+  return text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+}
+
+function markdownToHtml(content: string) {
+  content = content.replace(/\r/g, "").replace(/\n{3,}/g, "\n\n");
+
+  const lines = content.split("\n");
+
+  let html = "";
+
+  let inOl = false;
+  let inUl = false;
+  let inLi = false; // 👈 track current <li>
+
+  const closeUl = () => {
+    if (inUl) {
+      html += "</ul>";
+      inUl = false;
+    }
+  };
+
+  const closeLi = () => {
+    closeUl();
+
+    if (inLi) {
+      html += "</li>";
+      inLi = false;
+    }
+  };
+
+  const closeOl = () => {
+    closeLi();
+
+    if (inOl) {
+      html += "</ol>";
+      inOl = false;
+    }
+  };
+
+  const closeAll = () => {
+    closeOl();
+  };
+
+  for (let raw of lines) {
+    const line = raw.trim();
+
+    if (!line) continue;
+
+    const escaped = escapeHtml(line);
+    const formatted = formatInline(escaped);
+
+    /* ---------- Ordered list ---------- */
+    if (/^\d+\.\s/.test(line)) {
+      closeLi();
+
+      if (!inOl) {
+        html += "<ol>";
+        inOl = true;
+      }
+
+      html += `<li>${formatted.replace(/^\d+\.\s/, "")}`;
+      inLi = true;
+
+      continue;
+    }
+
+    /* ---------- Nested unordered list ---------- */
+    if (/^\- /.test(line)) {
+      if (!inLi) continue;
+
+      if (!inUl) {
+        html += "<ul>";
+        inUl = true;
+      }
+
+      html += `<li>${formatted.replace(/^\- /, "")}</li>`;
+      continue;
+    }
+
+    /* ---------- Paragraph ---------- */
+    closeAll();
+    html += `<p>${formatted}</p>`;
+  }
+
+  closeAll();
+
+  return html;
+}
 function sectionsToHtml(sections: any[]): string {
   if (!sections?.length) return "";
+
   return sections
-    .map(
-      (s) =>
-        `<h3><strong>${cleanTitle(s.title)}</strong></h3><p>${String(s.content).replace(/\n/g, "<br/>")}</p><br/>`,
-    )
+    .map((s) => {
+      const title = escapeHtml(
+        String(s.title || "").replace(/:$/, "").trim()
+      );
+
+      const body = markdownToHtml(String(s.content || ""));
+      console.log('body', body);
+      return `
+        <section class="doc-section">
+          <h3 class="doc-title">${title}</h3>
+          <div class="doc-body">
+            ${body}
+          </div>
+        </section>
+      `;
+    })
     .join("");
 }
-
 export const useDraftSummary = () => {
   const {
     prepareDraft,
