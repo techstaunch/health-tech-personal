@@ -124,11 +124,13 @@ function sectionsToHtml(sections: any[]): string {
   return sections
     .map((s) => {
       const title = escapeHtml(
-        String(s.title || "").replace(/:$/, "").trim()
+        String(s.title || "")
+          .replace(/:$/, "")
+          .trim(),
       );
 
       const body = markdownToHtml(String(s.content || ""));
-      console.log('body', body);
+
       return `
         <section class="doc-section">
           <h3 class="doc-title">${title}</h3>
