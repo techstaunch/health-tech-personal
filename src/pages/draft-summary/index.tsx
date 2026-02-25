@@ -55,6 +55,7 @@ const DraftSummary = () => {
             content={content}
             onChange={handleContentChange}
             onEditorReady={setEditor}
+            isPreparing={isPreparing}
           />
         </div>
       </main>

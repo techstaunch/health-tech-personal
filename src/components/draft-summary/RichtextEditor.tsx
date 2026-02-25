@@ -8,14 +8,18 @@ interface RichtextEditorProps {
   content: string;
   onChange: (content: string) => void;
   onEditorReady: (editor: any) => void;
+  isPreparing?: boolean;
 }
 
 const RichtextEditor = ({
   content,
   onChange,
   onEditorReady,
+  isPreparing = false,
 }: RichtextEditorProps) => {
   const editor = useEditor({
+    editable: !isPreparing,
+
     extensions: [
       StarterKit.configure({
         heading: {
@@ -27,10 +31,13 @@ const RichtextEditor = ({
         placeholder: "Capture your clinical summary...",
       }),
     ],
-    content: content,
+
+    content,
+
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
+
     editorProps: {
       attributes: {
         class:
@@ -52,7 +59,16 @@ const RichtextEditor = ({
   }, [content, editor]);
 
   return (
-    <div className="w-full h-full">
+    <div className="relative w-full h-full">
+      {isPreparing && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+          <div className="flex items-center gap-2 text-muted-foreground text-sm">
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+            Fetching summary...
+          </div>
+        </div>
+      )}
+
       <EditorContent editor={editor} />
     </div>
   );
