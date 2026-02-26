@@ -154,7 +154,7 @@ export const useDraftSummary = () => {
     rollback,
     lastEdits,
     getVersionSnapshot,
-    sections,
+    sections,references
   } = useDraft();
 
   const [content, setContent] = useState("");
@@ -331,5 +331,6 @@ export const useDraftSummary = () => {
     isPreviewing,
     handlePreviewVersion,
     handleRollback,
+    references
   };
 };

@@ -28,7 +28,7 @@ const DraftSummary = () => {
     previewVersion,
     isPreviewing,
     handlePreviewVersion,
-    handleRollback
+    handleRollback,references
   } = useDraftSummary();
 
   return (
@@ -46,6 +46,7 @@ const DraftSummary = () => {
         onCompare={handlePreviewVersion}
         editor={editor}
         dirty={dirty}
+        references={references}
         isPreviewing={isPreviewing}
       />
 
