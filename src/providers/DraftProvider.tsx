@@ -1,4 +1,10 @@
-import React, { createContext, useCallback, useContext, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import { toast } from "sonner";
 
 export interface PatchResult {
@@ -64,6 +70,8 @@ const BASE_URL =
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -76,13 +84,51 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
   const [dirty, setDirty] = useState(false);
   const [lastEdits, setLastEdits] = useState<AgentResult | null>(null);
 
-  const api = useCallback(async (url: string, options?: RequestInit) => {
-    const res = await fetch(`${BASE_URL}${url}`, options);
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(text || "Request failed");
-    }
-    return res.json();
+  const api = useCallback(
+    async (
+      url: string,
+      options?: RequestInit,
+      retries = 2,
+      allowRetryForMutation = false,
+    ) => {
+      const method = options?.method || "GET";
+      const isMutation = method !== "GET";
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 12000);
+
+      try {
+        const res = await fetch(`${BASE_URL}${url}`, {
+          ...options,
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeout);
+
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || "Request failed");
+        }
+
+        return res.json();
+      } catch (err) {
+        clearTimeout(timeout);
+
+        const canRetry = retries > 0 && (!isMutation || allowRetryForMutation);
+
+        if (canRetry) {
+          await sleep(800);
+          return api(url, options, retries - 1, allowRetryForMutation);
+        }
+
+        throw err;
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    fetch(`${BASE_URL}/health`).catch(() => {});
   }, []);
 
   const loadDraft = useCallback(
@@ -106,15 +152,27 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const prepareDraft = useCallback(
     async (pid: string, acc: string) => {
-      await api("/prepare-draft", {
-        method: "POST",
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ patientId: pid, accountNumber: acc }),
-      });
-      setPatientId(pid);
-      setAccountNumber(acc);
-      await Promise.all([loadDraft(pid, acc), loadHistory(pid, acc)]);
-      toast.success("Draft ready");
+      try {
+        await api(
+          "/prepare-draft",
+          {
+            method: "POST",
+            headers: JSON_HEADERS,
+            body: JSON.stringify({ patientId: pid, accountNumber: acc }),
+          },
+          2,
+          true,
+        );
+
+        setPatientId(pid);
+        setAccountNumber(acc);
+
+        await Promise.all([loadDraft(pid, acc), loadHistory(pid, acc)]);
+
+        toast.success("Draft ready");
+      } catch (err: any) {
+        toast.error(err?.message || "Server is waking up. Please try again.");
+      }
     },
     [api, loadDraft, loadHistory],
   );
@@ -122,49 +180,73 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
   const invokeAgent = useCallback(
     async (messages: any[]) => {
       if (!patientId || !accountNumber) throw new Error("Draft not ready");
-      const res = await api("/invoke", {
-        method: "POST",
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ patientId, accountNumber, messages }),
-      });
-      const result: AgentResult = res.data;
-      setLastEdits(result);
-      setDirty(result.dirty);
-      if (result.needsClarification) toast.warning(result.message ?? "Clarify");
+
+      try {
+        const res = await api(
+          "/invoke",
+          {
+            method: "POST",
+            headers: JSON_HEADERS,
+            body: JSON.stringify({ patientId, accountNumber, messages }),
+          },
+          1,
+          false,
+        );
+
+        const result: AgentResult = res.data;
+
+        setLastEdits(result);
+        setDirty(result.dirty);
+
+        if (result.needsClarification)
+          toast.warning(result.message ?? "Clarify");
+      } catch (err: any) {
+        toast.error(err?.message || "Failed to invoke AI");
+      }
     },
     [api, patientId, accountNumber],
   );
 
   const discardDraft = useCallback(async () => {
     if (!patientId || !accountNumber) return;
-    // await api(`/drafts/${patientId}/${accountNumber}/discard`, {
-    //   method: "POST",
-    //   headers: JSON_HEADERS,
-    // });
+
     setDirty(false);
     setLastEdits(null);
-    // loadDraft resets both sections and references to last committed state
+
     await loadDraft(patientId, accountNumber);
+
     toast.info("No changes made");
-  }, [api, patientId, accountNumber, loadDraft]);
+  }, [patientId, accountNumber, loadDraft]);
 
   const commitDraft = useCallback(
     async (createdBy: string) => {
       if (!patientId || !accountNumber) return;
-      const res = await api(`/drafts/${patientId}/${accountNumber}/commit`, {
-        method: "POST",
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ createdBy }),
-      });
-      setCurrentVersion(res.data.version);
-      setDirty(false);
-      setLastEdits(null);
-      // Reload both sections and references after commit
-      await Promise.all([
-        loadDraft(patientId, accountNumber),
-        loadHistory(patientId, accountNumber),
-      ]);
-      toast.success("Changes applied.");
+
+      try {
+        const res = await api(
+          `/drafts/${patientId}/${accountNumber}/commit`,
+          {
+            method: "POST",
+            headers: JSON_HEADERS,
+            body: JSON.stringify({ createdBy }),
+          },
+          1,
+          false,
+        );
+
+        setCurrentVersion(res.data.version);
+        setDirty(false);
+        setLastEdits(null);
+
+        await Promise.all([
+          loadDraft(patientId, accountNumber),
+          loadHistory(patientId, accountNumber),
+        ]);
+
+        toast.success("Changes applied.");
+      } catch (err: any) {
+        toast.error(err?.message || "Commit failed");
+      }
     },
     [api, patientId, accountNumber, loadDraft, loadHistory],
   );
@@ -172,18 +254,33 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
   const rollback = useCallback(
     async (version: string) => {
       if (!patientId || !accountNumber) return;
-      await api(`/drafts/${patientId}/${accountNumber}/rollback`, {
-        method: "POST",
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ targetVersion: version, createdBy: "anonymous" }),
-      });
-      setDirty(false);
-      // Reload both sections and references after rollback
-      await Promise.all([
-        loadDraft(patientId, accountNumber),
-        loadHistory(patientId, accountNumber),
-      ]);
-      toast.success(`Rolled back to ${version}`);
+
+      try {
+        await api(
+          `/drafts/${patientId}/${accountNumber}/rollback`,
+          {
+            method: "POST",
+            headers: JSON_HEADERS,
+            body: JSON.stringify({
+              targetVersion: version,
+              createdBy: "anonymous",
+            }),
+          },
+          1,
+          false,
+        );
+
+        setDirty(false);
+
+        await Promise.all([
+          loadDraft(patientId, accountNumber),
+          loadHistory(patientId, accountNumber),
+        ]);
+
+        toast.success(`Rolled back to ${version}`);
+      } catch (err: any) {
+        toast.error(err?.message || "Rollback failed");
+      }
     },
     [api, patientId, accountNumber, loadDraft, loadHistory],
   );
@@ -191,9 +288,11 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
   const getVersionSnapshot = useCallback(
     async (version: string) => {
       if (!patientId || !accountNumber) return null;
+
       const res = await api(
         `/drafts/${patientId}/${accountNumber}/versions/${version}`,
       );
+
       return res.data ?? null;
     },
     [api, patientId, accountNumber],
