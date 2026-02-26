@@ -154,7 +154,8 @@ export const useDraftSummary = () => {
     rollback,
     lastEdits,
     getVersionSnapshot,
-    sections,references
+    sections,
+    references,
   } = useDraft();
 
   const [content, setContent] = useState("");
@@ -211,7 +212,6 @@ export const useDraftSummary = () => {
         setLoading(true);
         setShowDiff(true);
         await invokeAgent([{ role: "user", content: text }]);
-        toast.success("AI edit applied");
       } catch (err: any) {
         toast.error(err.message);
       } finally {
@@ -331,6 +331,6 @@ export const useDraftSummary = () => {
     isPreviewing,
     handlePreviewVersion,
     handleRollback,
-    references
+    references,
   };
 };
