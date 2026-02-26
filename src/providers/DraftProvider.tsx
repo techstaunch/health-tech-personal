@@ -126,9 +126,20 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
     },
     [],
   );
-
   useEffect(() => {
-    fetch(`${BASE_URL}/health`).catch(() => {});
+    try {
+      const base = new URL(BASE_URL);
+
+      let pathname = base.pathname.replace(/\/+$/, "");
+
+      pathname = pathname.replace(/\/api(\/v\d+)?$/, "");
+
+      const healthUrl = new URL(base.origin + pathname + "/health");
+
+      fetch(healthUrl.toString(), { mode: "cors" }).catch(() => {});
+    } catch (err) {
+      console.error("Health warmup failed:", err);
+    }
   }, []);
 
   const loadDraft = useCallback(
