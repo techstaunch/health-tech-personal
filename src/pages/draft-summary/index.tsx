@@ -1,6 +1,8 @@
 import EditDiffViewer from "@/components/discharge/EditDiffViewer";
 import { VoicePanel } from "@/components/discharge/VoicePanel";
 import DraftSummaryHeader from "@/components/draft-summary/DraftSummaryHeader";
+
+import AlertDialog from "@/components/discharge/AlertDialog";
 import { useDraftSummary } from "@/components/draft-summary/hooks/useDraftSummary";
 import RichtextEditor from "@/components/draft-summary/RichtextEditor";
 
@@ -28,8 +30,27 @@ const DraftSummary = () => {
     previewVersion,
     isPreviewing,
     handlePreviewVersion,
-    handleRollback,references
+    handleRollback,
+    references,
+    // inline edit
+    inlineDirty,
+    showInlineConfirm,
+    setShowInlineConfirm,
+    handleConfirmInlineSave,
+    handleDocChanged,
+    isDiscarding,
+    isInlineSaving,
+    isRollingBack,
+    isSaving,
+    canEnableVoice,
   } = useDraftSummary();
+  const isContentLoading =
+    isInlineSaving ||
+    isDiscarding ||
+    isSaving ||
+    isRollingBack ||
+    isPreviewing ||
+    isPreparing;
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -48,6 +69,9 @@ const DraftSummary = () => {
         dirty={dirty}
         references={references}
         isPreviewing={isPreviewing}
+        voiceDisabled={!canEnableVoice || isContentLoading}
+        isContentLoading={isContentLoading || !inlineDirty}
+        setShowInlineConfirm={setShowInlineConfirm}
       />
 
       <main className="flex-1 p-4 md:p-8 overflow-auto flex justify-center bg-muted/10">
@@ -56,10 +80,23 @@ const DraftSummary = () => {
             content={content}
             onChange={handleContentChange}
             onEditorReady={setEditor}
-            isPreparing={isPreparing}
+            onDocChanged={handleDocChanged}
+            isPreparing={isContentLoading}
           />
         </div>
       </main>
+
+      <AlertDialog
+        open={showInlineConfirm}
+        onOpenChange={setShowInlineConfirm}
+        onConfirm={handleConfirmInlineSave}
+        content={{
+          title: "Save as new version?",
+          description:
+            "This will create a new version with your inline changes. The current version will remain in the history and can be restored at any time.",
+          actionText: "Save version",
+        }}
+      />
 
       {showVoice && (
         <VoicePanel

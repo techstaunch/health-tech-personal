@@ -1,3 +1,4 @@
+import Heading from "@tiptap/extension-heading";
 import Placeholder from "@tiptap/extension-placeholder";
 import Underline from "@tiptap/extension-underline";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -8,13 +9,32 @@ interface RichtextEditorProps {
   content: string;
   onChange: (content: string) => void;
   onEditorReady: (editor: any) => void;
+  onDocChanged?: () => void;
   isPreparing?: boolean;
 }
+const HeadingWithId = Heading.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+
+      "data-section-id": {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-section-id") ?? null,
+
+        renderHTML: (attributes) => {
+          if (!attributes["data-section-id"]) return {};
+          return { "data-section-id": attributes["data-section-id"] };
+        },
+      },
+    };
+  },
+});
 
 const RichtextEditor = ({
   content,
   onChange,
   onEditorReady,
+  onDocChanged,
   isPreparing = false,
 }: RichtextEditorProps) => {
   const editor = useEditor({
@@ -22,9 +42,10 @@ const RichtextEditor = ({
 
     extensions: [
       StarterKit.configure({
-        heading: {
-          levels: [1, 2, 3],
-        },
+        heading: false,  
+      }),
+      HeadingWithId.configure({
+        levels: [1, 2, 3],
       }),
       Underline,
       Placeholder.configure({
@@ -34,9 +55,12 @@ const RichtextEditor = ({
 
     content,
 
-    onUpdate: ({ editor }) => {
+    onUpdate: ({ editor }) => { 
       onChange(editor.getHTML());
+              onDocChanged?.();
+
     },
+
 
     editorProps: {
       attributes: {
