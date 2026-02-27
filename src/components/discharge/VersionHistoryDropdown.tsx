@@ -144,9 +144,7 @@ const VersionHistoryDropdown = ({
 
                 const isActionable = hasMultiple;
                 const isSelected = selected === String(v.version);
-                const nocon = isCurrent
-                            ? isPreviewingOldVersion
-                            : !isBeingPreviewed 
+
                 return (
                   <div key={String(v.version)}>
                     <div
@@ -197,7 +195,7 @@ const VersionHistoryDropdown = ({
                         </span>
                       </div>
 
-                      {isSelected && isActionable && nocon&& (
+                      {isSelected && isActionable && (
                         <div className="flex gap-2 mt-2.5 pt-2 border-t border-border">
                           {(isCurrent
                             ? isPreviewingOldVersion

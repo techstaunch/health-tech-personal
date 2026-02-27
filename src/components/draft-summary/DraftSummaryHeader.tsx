@@ -108,11 +108,12 @@ const DraftSummaryHeader = ({
             size="sm"
             onClick={() => setShowInlineConfirm(true)}
             className="gap-2 rounded-full"
-            disabled={isContentLoading}
+            disabled={isContentLoading || voiceDisabled}
           >
             <Save className="h-4 w-4 text-muted-foreground" />
             <span>Save</span>
           </Button>
+
           <Tooltip>
             <TooltipTrigger asChild>
               <span>
