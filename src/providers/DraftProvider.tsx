@@ -70,8 +70,6 @@ const BASE_URL =
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -84,48 +82,15 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
   const [dirty, setDirty] = useState(false);
   const [lastEdits, setLastEdits] = useState<AgentResult | null>(null);
 
-  const api = useCallback(
-    async (
-      url: string,
-      options?: RequestInit,
-      retries = 2,
-      allowRetryForMutation = false,
-    ) => {
-      const method = options?.method || "GET";
-      const isMutation = method !== "GET";
+  const api = useCallback(async (url: string, options?: RequestInit) => {
+    const res = await fetch(`${BASE_URL}${url}`, options);
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || "Request failed");
+    }
+    return res.json();
+  }, []);
 
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 12000);
-
-      try {
-        const res = await fetch(`${BASE_URL}${url}`, {
-          ...options,
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeout);
-
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(text || "Request failed");
-        }
-
-        return res.json();
-      } catch (err) {
-        clearTimeout(timeout);
-
-        const canRetry = retries > 0 && (!isMutation || allowRetryForMutation);
-
-        if (canRetry) {
-          await sleep(800);
-          return api(url, options, retries - 1, allowRetryForMutation);
-        }
-
-        throw err;
-      }
-    },
-    [],
-  );
   useEffect(() => {
     try {
       const base = new URL(BASE_URL);
@@ -164,16 +129,11 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
   const prepareDraft = useCallback(
     async (pid: string, acc: string) => {
       try {
-        await api(
-          "/prepare-draft",
-          {
-            method: "POST",
-            headers: JSON_HEADERS,
-            body: JSON.stringify({ patientId: pid, accountNumber: acc }),
-          },
-          2,
-          true,
-        );
+        await api("/prepare-draft", {
+          method: "POST",
+          headers: JSON_HEADERS,
+          body: JSON.stringify({ patientId: pid, accountNumber: acc }),
+        });
 
         setPatientId(pid);
         setAccountNumber(acc);
@@ -193,16 +153,11 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!patientId || !accountNumber) throw new Error("Draft not ready");
 
       try {
-        const res = await api(
-          "/invoke",
-          {
-            method: "POST",
-            headers: JSON_HEADERS,
-            body: JSON.stringify({ patientId, accountNumber, messages }),
-          },
-          1,
-          false,
-        );
+        const res = await api("/invoke", {
+          method: "POST",
+          headers: JSON_HEADERS,
+          body: JSON.stringify({ patientId, accountNumber, messages }),
+        });
 
         const result: AgentResult = res.data;
 
@@ -234,16 +189,11 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!patientId || !accountNumber) return;
 
       try {
-        const res = await api(
-          `/drafts/${patientId}/${accountNumber}/commit`,
-          {
-            method: "POST",
-            headers: JSON_HEADERS,
-            body: JSON.stringify({ createdBy }),
-          },
-          1,
-          false,
-        );
+        const res = await api(`/drafts/${patientId}/${accountNumber}/commit`, {
+          method: "POST",
+          headers: JSON_HEADERS,
+          body: JSON.stringify({ createdBy }),
+        });
 
         setCurrentVersion(res.data.version);
         setDirty(false);
@@ -267,19 +217,14 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!patientId || !accountNumber) return;
 
       try {
-        await api(
-          `/drafts/${patientId}/${accountNumber}/rollback`,
-          {
-            method: "POST",
-            headers: JSON_HEADERS,
-            body: JSON.stringify({
-              targetVersion: version,
-              createdBy: "anonymous",
-            }),
-          },
-          1,
-          false,
-        );
+        await api(`/drafts/${patientId}/${accountNumber}/rollback`, {
+          method: "POST",
+          headers: JSON_HEADERS,
+          body: JSON.stringify({
+            targetVersion: version,
+            createdBy: "anonymous",
+          }),
+        });
 
         setDirty(false);
 
