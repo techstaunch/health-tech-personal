@@ -88,9 +88,10 @@ const useVoice = ({ onTranscript, onClose }: UseVoiceProps) => {
         }
     };
 
-    const handleDone = () => {
-        if (transcript.trim()) {
-            onTranscript(transcript.trim());
+    const handleDone = (text?: string) => {
+        const transcriptToUse = (text || transcript).trim();
+        if (transcriptToUse) {
+            onTranscript(transcriptToUse);
         }
         if (isRecording) {
             stopRecording();

@@ -2,6 +2,7 @@ import { X, Mic, Square, Pause, Play, Loader2, AlertCircle, Check } from "lucide
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import useVoice from "./hooks/use-voice-panel-v2";
+import { useEffect, useState } from "react";
 
 interface VoicePanelProps {
   open: boolean;
@@ -28,6 +29,12 @@ export const VoicePanel = ({ open, onClose, onTranscript }: VoicePanelProps) => 
     handleRetry,
   } = useVoice({ onTranscript, onClose });
 
+  const [editedTranscript, setEditedTranscript] = useState(transcript);
+
+  useEffect(() => {
+    setEditedTranscript(transcript);
+  }, [transcript]);
+
   if (!open) return null;
 
   return (
@@ -47,8 +54,8 @@ export const VoicePanel = ({ open, onClose, onTranscript }: VoicePanelProps) => 
                 isRecording && !isPaused
                   ? "bg-red-500 animate-pulse"
                   : isRecording && isPaused
-                  ? "bg-amber-400"
-                  : "bg-muted-foreground/40"
+                    ? "bg-amber-400"
+                    : "bg-muted-foreground/40"
               )}
             />
             <span className="text-xs font-semibold text-foreground">Voice Input</span>
@@ -127,19 +134,23 @@ export const VoicePanel = ({ open, onClose, onTranscript }: VoicePanelProps) => 
               {isTranscribing
                 ? "Processing audio…"
                 : isRecording
-                ? isPaused
-                  ? "Paused — tap to resume"
-                  : "Recording… tap to stop"
-                : "Tap to record"}
+                  ? isPaused
+                    ? "Paused — tap to resume"
+                    : "Recording… tap to stop"
+                  : "Tap to record"}
             </span>
           </div>
 
           {/* Transcript */}
           {transcript ? (
             <div className="w-full bg-muted/50 border border-border rounded-lg p-3 max-h-32 overflow-y-auto">
-              <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">
-                {transcript}
-              </p>
+              <textarea
+                className="w-full bg-transparent text-xs text-foreground leading-relaxed whitespace-pre-wrap border-none focus:ring-0 resize-none outline-none p-0 scrollbar-hide"
+                value={editedTranscript}
+                onChange={(e) => setEditedTranscript(e.target.value)}
+                placeholder="Edit transcription..."
+                rows={4}
+              />
             </div>
           ) : !isRecording && !isTranscribing ? (
             <div className="w-full border border-dashed border-border rounded-lg px-3 py-4">
@@ -176,8 +187,8 @@ export const VoicePanel = ({ open, onClose, onTranscript }: VoicePanelProps) => 
               <Button
                 size="sm"
                 className="flex-1 h-8 text-xs"
-                onClick={handleDone}
-                disabled={!transcript.trim() || isTranscribing}
+                onClick={() => handleDone(editedTranscript)}
+                disabled={!editedTranscript.trim() || isTranscribing}
               >
                 <Check className="h-3 w-3 mr-1" />
                 Apply
