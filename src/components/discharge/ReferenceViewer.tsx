@@ -59,9 +59,7 @@ function formatClinicalTextToHtml(text: string) {
 
       html += `
         <h4 class="clinical-heading">
-          ${title
-            .toLowerCase()
-            .replace(/\b\w/g, (c) => c.toUpperCase())}
+          ${title.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())}
         </h4>
       `;
       continue;
@@ -94,7 +92,7 @@ function ReferenceModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-[60%] max-h-[80vh] flex flex-col p-0" >
+      <DialogContent className="max-w-[50%] max-h-[80vh] flex flex-col p-0">
         <DialogHeader className="px-5 py-4 border-b">
           <DialogTitle className="flex items-center gap-2 text-sm font-semibold truncate">
             <FileText className="h-4 w-4 text-primary" />
@@ -103,12 +101,12 @@ function ReferenceModal({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
-        <div
-  className="space-y-3 text-sm text-foreground leading-relaxed"
-  dangerouslySetInnerHTML={{
-    __html: formatClinicalTextToHtml(reference.content),
-  }}
-/>
+          <div
+            className="space-y-3 text-sm text-foreground leading-relaxed"
+            dangerouslySetInnerHTML={{
+              __html: formatClinicalTextToHtml(reference.content),
+            }}
+          />
         </div>
       </DialogContent>
     </Dialog>
@@ -151,7 +149,7 @@ const ReferenceViewer = ({
 
   const filtered = useMemo(() => {
     return references.filter((r) =>
-      r.id.toLowerCase().includes(search.toLowerCase())
+      r.id.toLowerCase().includes(search.toLowerCase()),
     );
   }, [references, search]);
 

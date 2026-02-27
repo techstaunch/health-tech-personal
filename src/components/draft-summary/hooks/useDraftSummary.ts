@@ -1,6 +1,8 @@
+import { normalizeVersion } from "@/components/discharge/VersionHistoryDropdown";
 import { useDraft } from "@/providers/DraftProvider";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { htmlToSections } from "../htmlToSections";
 
 export interface EditSection {
   confidence: number;
@@ -42,7 +44,7 @@ function markdownToHtml(content: string) {
 
   let inOl = false;
   let inUl = false;
-  let inLi = false; // 👈 track current <li>
+  let inLi = false;
 
   const closeUl = () => {
     if (inUl) {
@@ -81,7 +83,6 @@ function markdownToHtml(content: string) {
     const escaped = escapeHtml(line);
     const formatted = formatInline(escaped);
 
-    /* ---------- Ordered list ---------- */
     if (/^\d+\.\s/.test(line)) {
       closeLi();
 
@@ -96,7 +97,6 @@ function markdownToHtml(content: string) {
       continue;
     }
 
-    /* ---------- Nested unordered list ---------- */
     if (/^\- /.test(line)) {
       if (!inLi) continue;
 
@@ -109,7 +109,6 @@ function markdownToHtml(content: string) {
       continue;
     }
 
-    /* ---------- Paragraph ---------- */
     closeAll();
     html += `<p>${formatted}</p>`;
   }
@@ -118,6 +117,7 @@ function markdownToHtml(content: string) {
 
   return html;
 }
+
 function sectionsToHtml(sections: any[]): string {
   if (!sections?.length) return "";
 
@@ -131,9 +131,13 @@ function sectionsToHtml(sections: any[]): string {
 
       const body = markdownToHtml(String(s.content || ""));
 
+      const idAttr = s.id
+        ? ` data-section-id="${escapeHtml(String(s.id))}"`
+        : "";
+
       return `
         <section class="doc-section">
-          <h3 class="doc-title">${title}</h3>
+          <h3 class="doc-title"${idAttr}>${title}</h3>
           <div class="doc-body">
             ${body}
           </div>
@@ -142,6 +146,7 @@ function sectionsToHtml(sections: any[]): string {
     })
     .join("");
 }
+
 export const useDraftSummary = () => {
   const {
     prepareDraft,
@@ -156,25 +161,38 @@ export const useDraftSummary = () => {
     getVersionSnapshot,
     sections,
     references,
+    saveInline,
+    isSaving,
+    isDiscarding,
+    isRollingBack,
+    isInlineSaving,
+    isPreviewing,
+    isAnyLoading,
   } = useDraft();
 
   const [content, setContent] = useState("");
   const [showVoice, setShowVoice] = useState(false);
   const [editor, setEditor] = useState<any>(null);
   const [isPreparing, setIsPreparing] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
 
   const [previewVersion, setPreviewVersion] = useState<string | null>(null);
   const [previewSections, setPreviewSections] = useState<any[] | null>(null);
-  const [isPreviewing, setIsPreviewing] = useState(false);
+
+  const [inlineDirty, setInlineDirty] = useState(false);
+  const [showInlineConfirm, setShowInlineConfirm] = useState(false);
 
   const currentHtmlRef = useRef("");
   const hasPrepared = useRef(false);
 
-  /* ----------------------------------
-     Init
-  ---------------------------------- */
+  const [loading, setLoading] = useState(false);
+  const normalizedCurrentVersion = normalizeVersion(currentVersion);
+  const normalizedPreviewVersion = normalizeVersion(previewVersion);
+
+  const canEnableVoice = normalizedPreviewVersion
+    ? normalizedPreviewVersion === normalizedCurrentVersion
+    : true;
+
   useEffect(() => {
     if (hasPrepared.current) return;
     hasPrepared.current = true;
@@ -191,19 +209,23 @@ export const useDraftSummary = () => {
     };
 
     init();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Sync editor when sections update (and not in preview mode)
   useEffect(() => {
     if (!sections?.length || previewVersion) return;
     const html = sectionsToHtml(sections);
     currentHtmlRef.current = html;
     setContent(html);
+    setInlineDirty(false);
     if (editor) editor.commands.setContent(html);
-  }, [sections]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sections]);
 
   const handleContentChange = useCallback((newContent: string) => {
     setContent(newContent);
+  }, []);
+
+  const handleDocChanged = useCallback(() => {
+    setInlineDirty(true);
   }, []);
 
   const handleTranscript = useCallback(
@@ -228,6 +250,7 @@ export const useDraftSummary = () => {
       toast.success("Version committed");
     } catch (err: any) {
       toast.error(err.message);
+    } finally {
     }
   }, [commitDraft, content]);
 
@@ -236,16 +259,26 @@ export const useDraftSummary = () => {
     if (editor) editor.commands.setContent(html);
     setContent(html);
     currentHtmlRef.current = html;
+    setInlineDirty(false);
     toast.success("Editor refreshed");
   }, [editor, sections]);
 
-  /* ----------------------------------
-     Preview — read only, no DB writes
-     Clicking current version exits preview
-  ---------------------------------- */
+  const handleConfirmInlineSave = useCallback(async () => {
+    try {
+      const parsedSections = htmlToSections(content);
+      await saveInline(PATIENT_ID, ACCOUNT_NUMBER, parsedSections);
+      setShowInlineConfirm(false);
+      setInlineDirty(false);
+      currentHtmlRef.current = content;
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+    }
+  }, [content, saveInline]);
+
   const handlePreviewVersion = useCallback(
     async (version: string) => {
-      if (version === currentVersion) {
+      if (normalizeVersion(version) === normalizedCurrentVersion) {
         setPreviewVersion(null);
         setPreviewSections(null);
         setContent(currentHtmlRef.current);
@@ -254,7 +287,6 @@ export const useDraftSummary = () => {
       }
 
       try {
-        setIsPreviewing(true);
         const snapshot = await getVersionSnapshot(version);
         if (snapshot) {
           setPreviewVersion(version);
@@ -266,16 +298,11 @@ export const useDraftSummary = () => {
       } catch (err: any) {
         toast.error(err.message);
       } finally {
-        setIsPreviewing(false);
       }
     },
-    [currentVersion, getVersionSnapshot, editor],
+    [currentVersion, normalizedCurrentVersion, getVersionSnapshot, editor],
   );
 
-  /* ----------------------------------
-     Restore — creates new version from snapshot (append-only audit trail)
-     Exits preview mode after restoring
-  ---------------------------------- */
   const handleRollback = useCallback(
     async (version: string) => {
       if (!version) return;
@@ -283,24 +310,20 @@ export const useDraftSummary = () => {
         await rollback(version);
         setPreviewVersion(null);
         setPreviewSections(null);
-        // sections useEffect will re-sync the editor automatically
       } catch (err: any) {
         toast.error(err.message);
+      } finally {
       }
     },
     [rollback],
   );
 
-  /* ----------------------------------
-     Discard — resets mutable sections table to last committed version
-     Called when user cancels the diff viewer
-  ---------------------------------- */
   const handleDiscard = useCallback(async () => {
     try {
       await discardDraft();
-      // sections useEffect will re-sync editor automatically
     } catch (err: any) {
       toast.error(err.message);
+    } finally {
     }
   }, [discardDraft]);
 
@@ -315,7 +338,13 @@ export const useDraftSummary = () => {
     handleTranscript,
     handleSave,
     handleRefresh,
-    loading,
+    loading, // AI agent / voice transcript call
+    isSaving, // commit draft
+    isDiscarding, // discard draft
+    isRollingBack, // rollback to a version
+    isInlineSaving, // save inline edits as new version
+    isPreviewing, // fetching a version snapshot for preview
+    isAnyLoading, // any of the above — useful for disabling the whole UI
     showDiff,
     setShowDiff,
     currentVersion,
@@ -328,9 +357,15 @@ export const useDraftSummary = () => {
     handleDiscard,
     previewVersion,
     previewSections,
-    isPreviewing,
     handlePreviewVersion,
     handleRollback,
     references,
+    canEnableVoice,
+    // inline edit
+    inlineDirty,
+    showInlineConfirm,
+    setShowInlineConfirm,
+    handleConfirmInlineSave,
+    handleDocChanged,
   };
 };

@@ -1,10 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { BookOpen, Mic, Wand2 } from "lucide-react";
+import { BookOpen, Mic, Save, Wand2 } from "lucide-react";
 import { useState } from "react";
 import ReferenceViewer from "../discharge/ReferenceViewer";
 import VersionHistoryDropdown, {
-    type VersionHistoryDropdownProps,
+  type VersionHistoryDropdownProps,
 } from "../discharge/VersionHistoryDropdown";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import DraftSummaryToolbar from "./DraftSummaryToolbar";
 
 interface Reference {
@@ -18,9 +19,13 @@ interface DraftSummaryHeaderProps extends VersionHistoryDropdownProps {
   onVoiceClick: () => void;
   onSave: () => void;
   isPreparing?: boolean;
+  setShowInlineConfirm: React.Dispatch<React.SetStateAction<boolean>>;
+  isContentLoading?: boolean;
   editor: any;
   dirty?: boolean;
   isPreviewing?: boolean;
+
+  voiceDisabled?: boolean;
   references?: Reference[];
 }
 
@@ -33,6 +38,9 @@ const DraftSummaryHeader = ({
   dirty,
   isPreviewing,
   references = [],
+  isContentLoading,
+  voiceDisabled,
+  setShowInlineConfirm,
   ...props
 }: DraftSummaryHeaderProps) => {
   const [showRefs, setShowRefs] = useState(false);
@@ -98,12 +106,35 @@ const DraftSummaryHeader = ({
           <Button
             variant="outline"
             size="sm"
-            onClick={onVoiceClick}
-            className="gap-2 rounded-full border-primary/20 hover:border-primary/50 transition-colors"
+            onClick={() => setShowInlineConfirm(true)}
+            className="gap-2 rounded-full"
+            disabled={isContentLoading}
           >
-            <Mic className="h-4 w-4 text-primary" />
-            <span>Voice</span>
+            <Save className="h-4 w-4 text-muted-foreground" />
+            <span>Save</span>
           </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onVoiceClick}
+                  disabled={voiceDisabled}
+                  className="gap-2 rounded-full border-primary/20 hover:border-primary/50 transition-colors"
+                >
+                  <Mic className="h-4 w-4 text-primary" />
+                  <span>Voice</span>
+                </Button>
+              </span>
+            </TooltipTrigger>
+
+            {voiceDisabled && (
+              <TooltipContent side="bottom">
+                To start making changes, please make this version current first.
+              </TooltipContent>
+            )}
+          </Tooltip>
         </div>
       </header>
 
