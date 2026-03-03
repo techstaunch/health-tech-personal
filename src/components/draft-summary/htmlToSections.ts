@@ -74,7 +74,7 @@ function inlineToMarkdown(node: Node): string {
       return `*${inner}*`;
 
     case "u":
-       return `__${inner}__`;
+      return `__${inner}__`;
 
     case "code":
       return `\`${inner}\``;
@@ -93,23 +93,23 @@ function inlineToMarkdown(node: Node): string {
       return "\n";
 
     default:
-       return inner;
+      return inner;
   }
 }
 
- function childrenToMarkdown(el: Element): string {
+function childrenToMarkdown(el: Element): string {
   return Array.from(el.childNodes).map(inlineToMarkdown).join("");
 }
- 
- 
+
+
 function blockToLines(el: Element, listDepth = 0): string[] {
   const tag = el.tagName.toLowerCase();
- 
+
   if (tag === "p") {
     const text = childrenToMarkdown(el).trim();
     return text ? [text] : [];
   }
- 
+
   if (tag === "ol") {
     const lines: string[] = [];
     let counter = 1;
@@ -119,7 +119,7 @@ function blockToLines(el: Element, listDepth = 0): string[] {
       counter++;
     }
     return lines;
-  } 
+  }
   if (tag === "ul") {
     const lines: string[] = [];
     for (const child of Array.from(el.children)) {
@@ -128,7 +128,7 @@ function blockToLines(el: Element, listDepth = 0): string[] {
     }
     return lines;
   }
- 
+
   if (tag === "blockquote") {
     const inner: string[] = [];
     for (const child of Array.from(el.children)) {
@@ -136,27 +136,27 @@ function blockToLines(el: Element, listDepth = 0): string[] {
     }
     return inner.map((line) => `> ${line}`);
   }
- 
+
   if (tag === "pre") {
     const codeEl = el.querySelector("code");
     const code = codeEl ? (codeEl.textContent ?? "") : (el.textContent ?? "");
     return ["```", ...code.split("\n"), "```"];
   }
- 
+
   if (tag === "hr") {
     return ["---"];
   }
- 
+
   if (/^h[1-6]$/.test(tag)) {
     const text = childrenToMarkdown(el).trim();
     return text ? [text] : [];
   }
- 
+
   const text = childrenToMarkdown(el).trim();
   return text ? [text] : [];
 }
 
- 
+
 function liToLines(
   li: Element,
   index: number,
@@ -178,16 +178,16 @@ function liToLines(
 
     if (childTag === "ol" || childTag === "ul") {
       nestedLists.push(child as Element);
-    } else if (childTag === "p") { 
+    } else if (childTag === "p") {
       inlineParts.push(childrenToMarkdown(child as Element));
-    } else { 
+    } else {
       inlineParts.push(inlineToMarkdown(child));
     }
   }
 
   const text = inlineParts.join("").trim();
   if (text) lines.push(`${prefix}${text}`);
- 
+
   for (const nestedList of nestedLists) {
     const nestedTag = nestedList.tagName.toLowerCase() as "ol" | "ul";
     let nestedCounter = 1;
@@ -201,7 +201,7 @@ function liToLines(
   return lines;
 }
 
- 
+
 function splitIntoSections(body: Element): Section[] {
   const sections: Section[] = [];
   let currentTitle = "";
@@ -210,7 +210,7 @@ function splitIntoSections(body: Element): Section[] {
 
   const flush = () => {
     const raw = currentLines.join("\n").trim();
- 
+
     const content = raw.replace(/\n{3,}/g, "\n\n");
 
     const section: Section = { title: currentTitle, content };
@@ -225,11 +225,11 @@ function splitIntoSections(body: Element): Section[] {
   for (const node of Array.from(body.children)) {
     const tag = node.tagName.toLowerCase();
 
-    if (/^h[1-6]$/.test(tag)) { 
+    if (/^h[1-6]$/.test(tag)) {
       if (currentTitle || currentLines.length > 0) {
         flush();
       }
-      currentTitle = childrenToMarkdown(node).trim(); 
+      currentTitle = childrenToMarkdown(node).trim();
       currentId =
         (node as Element).getAttribute("data-section-id") ?? undefined;
     } else {
@@ -241,7 +241,7 @@ function splitIntoSections(body: Element): Section[] {
       }
     }
   }
- 
+
   if (currentTitle || currentLines.length > 0) {
     flush();
   }
@@ -249,7 +249,7 @@ function splitIntoSections(body: Element): Section[] {
   return sections;
 }
 
- 
+
 export function htmlToSections(html: string): Section[] {
   if (!html?.trim()) return [];
 
