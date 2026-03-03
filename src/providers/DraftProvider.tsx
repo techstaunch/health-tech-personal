@@ -73,7 +73,7 @@ interface DraftContextValue {
   isAnyLoading: boolean;
 
   prepareDraft: (patientId: string, accountNumber: string) => Promise<void>;
-  invokeAgent: (messages: any[]) => Promise<void>;
+  invokeAgent: (messages: any[], sectionId?: string | null) => Promise<void>;
   discardDraft: () => Promise<void>;
   commitDraft: (createdBy: string) => Promise<void>;
   rollback: (version: string) => Promise<void>;
@@ -103,7 +103,7 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [dirty, setDirty] = useState(false);
   const [lastEdits, setLastEdits] = useState<AgentResult | null>(null);
- 
+
   const [isPreparing, setIsPreparing] = useState(false);
   const [isInvoking, setIsInvoking] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -137,7 +137,7 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
       let pathname = base.pathname.replace(/\/+$/, "");
       pathname = pathname.replace(/\/api(\/v\d+)?$/, "");
       const healthUrl = new URL(base.origin + pathname + "/health");
-      fetch(healthUrl.toString(), { mode: "cors" }).catch(() => {});
+      fetch(healthUrl.toString(), { mode: "cors" }).catch(() => { });
     } catch (err) {
       console.error("Health warmup failed:", err);
     }
@@ -188,7 +188,7 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const invokeAgent = useCallback(
-    async (messages: any[]) => {
+    async (messages: any[], sectionId?: string | null) => {
       if (!patientId || !accountNumber) return;
 
       try {
@@ -197,7 +197,12 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
         const res = await api("/invoke", {
           method: "POST",
           headers: JSON_HEADERS,
-          body: JSON.stringify({ patientId, accountNumber, messages }),
+          body: JSON.stringify({
+            patientId,
+            accountNumber,
+            messages,
+            sectionId: sectionId ?? undefined,
+          }),
         });
 
         const result: AgentResult = res.data;

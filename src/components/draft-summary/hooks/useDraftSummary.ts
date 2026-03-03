@@ -182,6 +182,8 @@ export const useDraftSummary = () => {
   const [inlineDirty, setInlineDirty] = useState(false);
   const [showInlineConfirm, setShowInlineConfirm] = useState(false);
 
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
+
   const currentHtmlRef = useRef("");
   const hasPrepared = useRef(false);
 
@@ -233,14 +235,14 @@ export const useDraftSummary = () => {
       try {
         setLoading(true);
         setShowDiff(true);
-        await invokeAgent([{ role: "user", content: text }]);
+        await invokeAgent([{ role: "user", content: text }], selectedSectionId);
       } catch (err: any) {
         toast.error(err.message);
       } finally {
         setLoading(false);
       }
     },
-    [invokeAgent],
+    [invokeAgent, selectedSectionId],
   );
 
   const handleSave = useCallback(async () => {
@@ -367,5 +369,8 @@ export const useDraftSummary = () => {
     setShowInlineConfirm,
     handleConfirmInlineSave,
     handleDocChanged,
+    // Section selection
+    selectedSectionId,
+    setSelectedSectionId,
   };
 };

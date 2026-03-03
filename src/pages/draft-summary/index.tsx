@@ -5,6 +5,7 @@ import DraftSummaryHeader from "@/components/draft-summary/DraftSummaryHeader";
 import AlertDialog from "@/components/discharge/AlertDialog";
 import { useDraftSummary } from "@/components/draft-summary/hooks/useDraftSummary";
 import RichtextEditor from "@/components/draft-summary/RichtextEditor";
+import { toast } from "sonner";
 
 const DraftSummary = () => {
   const {
@@ -43,6 +44,8 @@ const DraftSummary = () => {
     isRollingBack,
     isSaving,
     canEnableVoice,
+    selectedSectionId,
+    setSelectedSectionId,
   } = useDraftSummary();
   const isContentLoading =
     isInlineSaving ||
@@ -56,7 +59,13 @@ const DraftSummary = () => {
     <div className="flex flex-col min-h-screen bg-background">
       <DraftSummaryHeader
         onRefresh={handleRefresh}
-        onVoiceClick={() => setShowVoice(true)}
+        onVoiceClick={() => {
+          if (!selectedSectionId) {
+            toast.error("Please select a section first");
+            return;
+          }
+          setShowVoice(true);
+        }}
         onSave={handleSave}
         isPreparing={isPreparing}
         versions={history}
@@ -82,6 +91,8 @@ const DraftSummary = () => {
             onEditorReady={setEditor}
             onDocChanged={handleDocChanged}
             isPreparing={isContentLoading}
+            selectedSectionId={selectedSectionId}
+            onSectionSelect={setSelectedSectionId}
           />
         </div>
       </main>

@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { BookOpen, Mic, Save, Wand2 } from "lucide-react";
 import { useState } from "react";
-import ReferenceViewer from "../discharge/ReferenceViewer"; 
+import ReferenceViewer from "../discharge/ReferenceViewer";
 import VersionHistoryDropdown, {
   type VersionHistoryDropdownProps,
 } from "../discharge/VersionHistoryDropdown";
