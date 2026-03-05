@@ -1,11 +1,11 @@
+import AlertDialog from "@/components/discharge/AlertDialog";
 import EditDiffViewer from "@/components/discharge/EditDiffViewer";
 import { VoicePanel } from "@/components/discharge/VoicePanel";
 import DraftSummaryHeader from "@/components/draft-summary/DraftSummaryHeader";
-
-import AlertDialog from "@/components/discharge/AlertDialog";
 import { useDraftSummary } from "@/components/draft-summary/hooks/useDraftSummary";
 import RichtextEditor from "@/components/draft-summary/RichtextEditor";
 import { toast } from "sonner";
+import SignoffModal from "./SignoffModal";
 
 const DraftSummary = () => {
   const {
@@ -33,7 +33,6 @@ const DraftSummary = () => {
     handlePreviewVersion,
     handleRollback,
     references,
-    // inline edit
     inlineDirty,
     showInlineConfirm,
     setShowInlineConfirm,
@@ -46,7 +45,14 @@ const DraftSummary = () => {
     canEnableVoice,
     selectedSectionId,
     setSelectedSectionId,
+    // signoff
+    signoff,
+    isSigned,
+    openSignoff,
+    setOpenSignoff,
+    handleSignoffConfirm,
   } = useDraftSummary();
+
   const isContentLoading =
     isInlineSaving ||
     isDiscarding ||
@@ -67,6 +73,7 @@ const DraftSummary = () => {
           setShowVoice(true);
         }}
         onSave={handleSave}
+        signoff={signoff}
         isPreparing={isPreparing}
         versions={history}
         currentVersion={currentVersion}
@@ -78,9 +85,11 @@ const DraftSummary = () => {
         dirty={dirty}
         references={references}
         isPreviewing={isPreviewing}
-        voiceDisabled={!canEnableVoice || isContentLoading}
-        isContentLoading={isContentLoading || !inlineDirty}
+        voiceDisabled={!canEnableVoice || isContentLoading || isSigned}
+        isContentLoading={isContentLoading}
+        inlineDirty={inlineDirty}
         setShowInlineConfirm={setShowInlineConfirm}
+        openSignoff={() => setOpenSignoff(true)}
       />
 
       <main className="flex-1 p-4 md:p-8 overflow-auto flex justify-center bg-muted/10">
@@ -93,7 +102,17 @@ const DraftSummary = () => {
             isPreparing={isContentLoading}
             selectedSectionId={selectedSectionId}
             onSectionSelect={setSelectedSectionId}
+            editable={!isSigned}
+            signoff={signoff}
+            isCurrent={
+              previewVersion ? previewVersion === currentVersion : true
+            }
+            signedBy={signoff?.signedBy}
           />
+
+          {isSigned && (
+            <div className="absolute inset-0 rounded-xl cursor-default" />
+          )}
         </div>
       </main>
 
@@ -107,6 +126,13 @@ const DraftSummary = () => {
             "This will create a new version with your inline changes. The current version will remain in the history and can be restored at any time.",
           actionText: "Save version",
         }}
+      />
+
+      <SignoffModal
+        open={openSignoff}
+        onClose={() => setOpenSignoff(false)}
+        onConfirm={handleSignoffConfirm}
+        loading={isSaving}
       />
 
       {showVoice && (
@@ -123,9 +149,7 @@ const DraftSummary = () => {
             editResponse={lastEdits as any}
             loading={loading}
             commitDraft={commitDraft}
-            onClose={async () => {
-              setShowDiff(false);
-            }}
+            onClose={async () => setShowDiff(false)}
             handleDiscard={handleDiscard}
           />
         </div>

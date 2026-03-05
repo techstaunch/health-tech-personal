@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import type { HistoryItem } from "@/providers/DraftProvider";
+import type { HistoryItem, SignoffData } from "@/providers/DraftProvider";
 import { ChevronDown, Clock, Eye, RotateCcw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import AlertDialog from "./AlertDialog";
@@ -44,6 +44,7 @@ export interface VersionHistoryDropdownProps {
   versions: HistoryItem[];
   currentVersion?: string | number | null;
   previewVersion?: string | number | null;
+  signoff: SignoffData | null;
   onPreview?: (version: string) => void;
   onRestore?: (version: string) => void;
   onCompare?: (version: string) => void;
@@ -55,6 +56,7 @@ const VersionHistoryDropdown = ({
   previewVersion,
   onRestore,
   onCompare,
+  signoff,
 }: VersionHistoryDropdownProps) => {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
@@ -216,7 +218,7 @@ const VersionHistoryDropdown = ({
                             </Button>
                           )}
 
-                          {!isCurrent && (
+                          {!signoff?.isSigned && !isCurrent && (
                             <Button
                               size="sm"
                               variant="outline"

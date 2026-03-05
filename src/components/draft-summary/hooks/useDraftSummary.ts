@@ -1,8 +1,16 @@
 import { normalizeVersion } from "@/components/discharge/VersionHistoryDropdown";
 import { useDraft } from "@/providers/DraftProvider";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { htmlToSections } from "../htmlToSections";
+
+import rehypeSanitize from "rehype-sanitize";
+import rehypeStringify from "rehype-stringify";
+import remarkGfm from "remark-gfm";
+import remarkParse from "remark-parse";
+import remarkRehype from "remark-rehype";
+import { unified } from "unified";
+
 
 export interface EditSection {
   confidence: number;
@@ -22,129 +30,72 @@ export interface EditResponse {
 const PATIENT_ID = "mrn2097";
 const ACCOUNT_NUMBER = "acc2097";
 
-function escapeHtml(text: string) {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+async function markdownToHtml(content: string) {
+  const file = await unified()
+    .use(remarkParse)
+    .use(remarkGfm)
+    .use(remarkRehype)
+    .use(rehypeSanitize)
+    .use(rehypeStringify)
+    .process(content.replace(/\t/g, "    "));
+
+  return String(file);
 }
 
-function formatInline(text: string) {
-  return text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-}
-
-function markdownToHtml(content: string) {
-  content = content.replace(/\r/g, "").replace(/\n{3,}/g, "\n\n");
-
-  const lines = content.split("\n");
-
-  let html = "";
-
-  let inOl = false;
-  let inUl = false;
-  let inLi = false;
-
-  const closeUl = () => {
-    if (inUl) {
-      html += "</ul>";
-      inUl = false;
-    }
-  };
-
-  const closeLi = () => {
-    closeUl();
-
-    if (inLi) {
-      html += "</li>";
-      inLi = false;
-    }
-  };
-
-  const closeOl = () => {
-    closeLi();
-
-    if (inOl) {
-      html += "</ol>";
-      inOl = false;
-    }
-  };
-
-  const closeAll = () => {
-    closeOl();
-  };
-
-  for (let raw of lines) {
-    const line = raw.trim();
-
-    if (!line) continue;
-
-    const escaped = escapeHtml(line);
-    const formatted = formatInline(escaped);
-
-    if (/^\d+\.\s/.test(line)) {
-      closeLi();
-
-      if (!inOl) {
-        html += "<ol>";
-        inOl = true;
-      }
-
-      html += `<li>${formatted.replace(/^\d+\.\s/, "")}`;
-      inLi = true;
-
-      continue;
-    }
-
-    if (/^\- /.test(line)) {
-      if (!inLi) continue;
-
-      if (!inUl) {
-        html += "<ul>";
-        inUl = true;
-      }
-
-      html += `<li>${formatted.replace(/^\- /, "")}</li>`;
-      continue;
-    }
-
-    closeAll();
-    html += `<p>${formatted}</p>`;
-  }
-
-  closeAll();
-
-  return html;
-}
-
-function sectionsToHtml(sections: any[]): string {
+async function sectionsToHtml(sections: any[]): Promise<string> {
   if (!sections?.length) return "";
 
-  return sections
-    .map((s) => {
-      const title = escapeHtml(
-        String(s.title || "")
-          .replace(/:$/, "")
-          .trim(),
-      );
+  const sorted = [...sections].sort((a, b) => a.position - b.position);
 
-      const body = markdownToHtml(String(s.content || ""));
+  const rendered = await Promise.all(
+    sorted.map(async (s) => {
+      const body = await markdownToHtml(String(s.content || ""));
 
-      const idAttr = s.id
-        ? ` data-section-id="${escapeHtml(String(s.id))}"`
+      const positionAttr = s.position
+        ? ` data-section-position="${s.position}"`
         : "";
+
+      const idAttr = s.id ? ` data-section-id="${String(s.id)}"` : "";
 
       return `
         <section class="doc-section">
-          <h3 class="doc-title"${idAttr}>${title}</h3>
+          <h3 class="doc-title"${idAttr}${positionAttr}>
+            ${String(s.title || "")
+              .replace(/:$/, "")
+              .trim()}
+          </h3>
           <div class="doc-body">
             ${body}
           </div>
         </section>
       `;
-    })
-    .join("");
+    }),
+  );
+
+  return rendered.join("");
+}
+
+function useRenderedHtml(sections: any[] | null) {
+  const [html, setHtml] = useState("");
+
+  useEffect(() => {
+    if (!sections?.length) return;
+
+    let cancelled = false;
+
+    const render = async () => {
+      const output = await sectionsToHtml(sections);
+      if (!cancelled) setHtml(output);
+    };
+
+    render();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sections]);
+
+  return html;
 }
 
 export const useDraftSummary = () => {
@@ -168,13 +119,19 @@ export const useDraftSummary = () => {
     isInlineSaving,
     isPreviewing,
     isAnyLoading,
+    signoff,
+    isSigned,
+    openSignoff,
+    setOpenSignoff,
+    handleSignoffConfirm,
   } = useDraft();
 
+  const [editor, setEditor] = useState<any>(null);
   const [content, setContent] = useState("");
   const [showVoice, setShowVoice] = useState(false);
-  const [editor, setEditor] = useState<any>(null);
   const [isPreparing, setIsPreparing] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const [previewVersion, setPreviewVersion] = useState<string | null>(null);
   const [previewSections, setPreviewSections] = useState<any[] | null>(null);
@@ -187,7 +144,6 @@ export const useDraftSummary = () => {
   const currentHtmlRef = useRef("");
   const hasPrepared = useRef(false);
 
-  const [loading, setLoading] = useState(false);
   const normalizedCurrentVersion = normalizeVersion(currentVersion);
   const normalizedPreviewVersion = normalizeVersion(previewVersion);
 
@@ -213,18 +169,26 @@ export const useDraftSummary = () => {
     init();
   }, []);
 
-  useEffect(() => {
-    if (!sections?.length || previewVersion) return;
-    const html = sectionsToHtml(sections);
-    currentHtmlRef.current = html;
-    setContent(html);
-    setInlineDirty(false);
-    if (editor) editor.commands.setContent(html);
-  }, [sections]);
+  const activeSections = useMemo(
+    () => previewSections ?? sections,
+    [previewSections, sections],
+  );
 
-  const handleContentChange = useCallback((newContent: string) => {
-    setContent(newContent);
-  }, []);
+  const renderedHtml = useRenderedHtml(activeSections);
+ 
+
+  useEffect(() => {
+    if (!editor || !renderedHtml) return;
+
+    editor.commands.setContent(renderedHtml);
+    setContent(renderedHtml);
+    currentHtmlRef.current = renderedHtml;
+    setInlineDirty(false);
+  }, [editor, renderedHtml]);
+
+  /* ---------------------------------------------------------------------- */
+  /*                               Handlers                                 */
+  /* ---------------------------------------------------------------------- */
 
   const handleDocChanged = useCallback(() => {
     setInlineDirty(true);
@@ -246,24 +210,18 @@ export const useDraftSummary = () => {
   );
 
   const handleSave = useCallback(async () => {
+    if (!isSigned) {
+      setOpenSignoff(true);
+      return;
+    }
+
     try {
       await commitDraft("anonymous");
-      currentHtmlRef.current = content;
       toast.success("Version committed");
     } catch (err: any) {
       toast.error(err.message);
-    } finally {
     }
-  }, [commitDraft, content]);
-
-  const handleRefresh = useCallback(() => {
-    const html = sectionsToHtml(sections);
-    if (editor) editor.commands.setContent(html);
-    setContent(html);
-    currentHtmlRef.current = html;
-    setInlineDirty(false);
-    toast.success("Editor refreshed");
-  }, [editor, sections]);
+  }, [isSigned, commitDraft, setOpenSignoff]);
 
   const handleConfirmInlineSave = useCallback(async () => {
     try {
@@ -274,7 +232,6 @@ export const useDraftSummary = () => {
       currentHtmlRef.current = content;
     } catch (err: any) {
       toast.error(err.message);
-    } finally {
     }
   }, [content, saveInline]);
 
@@ -283,8 +240,6 @@ export const useDraftSummary = () => {
       if (normalizeVersion(version) === normalizedCurrentVersion) {
         setPreviewVersion(null);
         setPreviewSections(null);
-        setContent(currentHtmlRef.current);
-        if (editor) editor.commands.setContent(currentHtmlRef.current);
         return;
       }
 
@@ -293,16 +248,12 @@ export const useDraftSummary = () => {
         if (snapshot) {
           setPreviewVersion(version);
           setPreviewSections(snapshot.sections);
-          const html = sectionsToHtml(snapshot.sections);
-          setContent(html);
-          if (editor) editor.commands.setContent(html);
         }
       } catch (err: any) {
         toast.error(err.message);
-      } finally {
       }
     },
-    [currentVersion, normalizedCurrentVersion, getVersionSnapshot, editor],
+    [normalizedCurrentVersion, getVersionSnapshot],
   );
 
   const handleRollback = useCallback(
@@ -314,7 +265,6 @@ export const useDraftSummary = () => {
         setPreviewSections(null);
       } catch (err: any) {
         toast.error(err.message);
-      } finally {
       }
     },
     [rollback],
@@ -325,30 +275,39 @@ export const useDraftSummary = () => {
       await discardDraft();
     } catch (err: any) {
       toast.error(err.message);
-    } finally {
     }
   }, [discardDraft]);
 
+  const handleContentChange = useCallback((newContent: string) => {
+    setContent(newContent);
+  }, []);
+
+  const handleRefresh = useCallback(() => {
+    if (!editor) return;
+    editor.commands.setContent(currentHtmlRef.current);
+    toast.success("Editor refreshed");
+  }, [editor]);
+
   return {
     content,
-    showVoice,
-    setShowVoice,
     editor,
     setEditor,
+    showVoice,
+    setShowVoice,
     isPreparing,
-    handleContentChange,
     handleTranscript,
     handleSave,
-    handleRefresh,
-    loading, // AI agent / voice transcript call
-    isSaving, // commit draft
-    isDiscarding, // discard draft
-    isRollingBack, // rollback to a version
-    isInlineSaving, // save inline edits as new version
-    isPreviewing, // fetching a version snapshot for preview
-    isAnyLoading, // any of the above — useful for disabling the whole UI
+    loading,
+    isSaving,
+    isDiscarding,
+    isRollingBack,
+    isInlineSaving,
+    isPreviewing,
+    isAnyLoading,
     showDiff,
     setShowDiff,
+    handleRefresh,
+    handleContentChange,
     currentVersion,
     dirty,
     history,
@@ -363,7 +322,6 @@ export const useDraftSummary = () => {
     handleRollback,
     references,
     canEnableVoice,
-    // inline edit
     inlineDirty,
     showInlineConfirm,
     setShowInlineConfirm,
@@ -372,5 +330,10 @@ export const useDraftSummary = () => {
     // Section selection
     selectedSectionId,
     setSelectedSectionId,
+    signoff,
+    isSigned,
+    openSignoff,
+    setOpenSignoff,
+    handleSignoffConfirm,
   };
 };
