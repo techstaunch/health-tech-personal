@@ -29,10 +29,12 @@ export const VoicePanel = ({ open, onClose, onTranscript }: VoicePanelProps) => 
     handleRetry,
   } = useVoice({ onTranscript, onClose });
 
-  const [editedTranscript, setEditedTranscript] = useState(transcript);
+  const [editedTranscript, setEditedTranscript] = useState(transcript || "");
 
   useEffect(() => {
-    setEditedTranscript(transcript);
+    if (transcript) {
+      setEditedTranscript(transcript);
+    }
   }, [transcript]);
 
   if (!open) return null;
@@ -141,22 +143,34 @@ export const VoicePanel = ({ open, onClose, onTranscript }: VoicePanelProps) => 
             </span>
           </div>
 
-          {/* Transcript */}
-          {transcript ? (
-            <div className="w-full bg-muted/50 border border-border rounded-lg p-3 max-h-32 overflow-y-auto">
+          {/* Manual Input / Transcript */}
+          {(!isRecording && !isTranscribing) ? (
+            <div className="w-full bg-muted/50 border border-border rounded-lg p-3 max-h-32 overflow-y-auto min-h-[100px] flex flex-col">
               <textarea
-                className="w-full bg-transparent text-xs text-foreground leading-relaxed whitespace-pre-wrap border-none focus:ring-0 resize-none outline-none p-0 scrollbar-hide"
+                className="w-full bg-transparent text-xs text-foreground leading-relaxed whitespace-pre-wrap border-none focus:ring-0 resize-none outline-none p-0 scrollbar-hide flex-1"
                 value={editedTranscript}
                 onChange={(e) => setEditedTranscript(e.target.value)}
-                placeholder="Edit transcription..."
+                placeholder="Type or record your input..."
                 rows={4}
               />
             </div>
-          ) : !isRecording && !isTranscribing ? (
-            <div className="w-full border border-dashed border-border rounded-lg px-3 py-4">
-              <p className="text-[11px] text-muted-foreground/60 text-center">
-                Transcribed text will appear here
-              </p>
+          ) : isTranscribing ? (
+            <div className="w-full border border-dashed border-border rounded-lg px-3 py-4 flex items-center justify-center min-h-[100px]">
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <p className="text-[11px] text-muted-foreground/60 text-center">
+                  Processing audio…
+                </p>
+              </div>
+            </div>
+          ) : isRecording ? (
+            <div className="w-full border border-dashed border-border rounded-lg px-3 py-4 flex items-center justify-center min-h-[100px]">
+              <div className="flex flex-col items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                <p className="text-[11px] text-muted-foreground/60 text-center">
+                  Recording in progress…
+                </p>
+              </div>
             </div>
           ) : null}
 
@@ -174,21 +188,27 @@ export const VoicePanel = ({ open, onClose, onTranscript }: VoicePanelProps) => 
           )}
 
           {/* Actions */}
-          {transcript && (
+          {!isRecording && !isTranscribing && (
             <div className="flex gap-2 w-full">
               <Button
                 variant="outline"
                 size="sm"
                 className="flex-1 h-8 text-xs"
-                onClick={handleCancel}
+                disabled={!editedTranscript.trim()}
+                onClick={() => {
+                  setEditedTranscript("");
+                  if (transcript) {
+                    handleCancel();
+                  }
+                }}
               >
-                Discard
+                Clear
               </Button>
               <Button
                 size="sm"
                 className="flex-1 h-8 text-xs"
                 onClick={() => handleDone(editedTranscript)}
-                disabled={!editedTranscript.trim() || isTranscribing}
+                disabled={!editedTranscript.trim()}
               >
                 <Check className="h-3 w-3 mr-1" />
                 Apply
