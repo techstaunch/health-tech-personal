@@ -168,7 +168,7 @@ const RichtextEditor = ({
           }
         `}</style>
 
-        {!isPreparing && (
+        {isPreparing && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/70 backdrop-blur-sm">
             <div className="flex items-center gap-2 text-muted-foreground text-sm">
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
