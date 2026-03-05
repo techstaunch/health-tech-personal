@@ -109,15 +109,17 @@ export const useSpeechToText = (
                     file: audioFile,
                     modelId: model,
                     languageCode: language,
-                }) as any;
+                });
 
                 let transcribedText = "";
 
-                if ("text" in result) {
+                if ("text" in result && typeof result.text === "string") {
                     transcribedText = result.text;
-                } else if ("transcripts" in result) {
+                } else if ("transcripts" in result && Array.isArray(result.transcripts)) {
                     // Handle multichannel response if needed (though we don't request it)
-                    transcribedText = result.transcripts.map((t: any) => t.text).join("\n");
+                    transcribedText = result.transcripts
+                        .map((t: { text: string }) => t.text)
+                        .join("\n");
                 }
 
                 setTranscript(transcribedText);
