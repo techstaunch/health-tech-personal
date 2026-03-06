@@ -1,11 +1,9 @@
+import SignoffFooter from "@/pages/draft-summary/SignoffFooter";
+import type { SignoffData } from "@/providers/DraftProvider";
 import Heading from "@tiptap/extension-heading";
 import Placeholder from "@tiptap/extension-placeholder";
 import Underline from "@tiptap/extension-underline";
-import {
-  EditorContent,
-  ReactNodeViewRenderer,
-  useEditor,
-} from "@tiptap/react";
+import { EditorContent, ReactNodeViewRenderer, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useEffect } from "react";
 import HeadingNodeView from "./HeadingNodeView";
@@ -19,6 +17,10 @@ interface RichtextEditorProps {
   isPreparing?: boolean;
   selectedSectionId?: string | null;
   onSectionSelect?: (id: string | null) => void;
+  editable?: boolean;
+  signoff?: SignoffData | null;
+  signedBy?: string;
+  isCurrent: boolean;
 }
 
 const HeadingWithId = Heading.extend({
@@ -30,7 +32,21 @@ const HeadingWithId = Heading.extend({
         parseHTML: (element) => element.getAttribute("data-section-id") ?? null,
         renderHTML: (attributes) => {
           if (!attributes["data-section-id"]) return {};
-          return { "data-section-id": attributes["data-section-id"] };
+          return {
+            "data-section-id": attributes["data-section-id"],
+          };
+        },
+      },
+
+      "data-section-position": {
+        default: null,
+        parseHTML: (element) =>
+          element.getAttribute("data-section-position") ?? null,
+        renderHTML: (attributes) => {
+          if (!attributes["data-section-position"]) return {};
+          return {
+            "data-section-position": attributes["data-section-position"],
+          };
         },
       },
     };
@@ -47,10 +63,15 @@ const RichtextEditor = ({
   onDocChanged,
   isPreparing = false,
   selectedSectionId = null,
-  onSectionSelect = () => { },
+  onSectionSelect = () => {},
+  editable = true,
+  signoff,
+  signedBy,
+  isCurrent,
 }: RichtextEditorProps) => {
   const editor = useEditor({
-    editable: !isPreparing,
+    editable: editable && !isPreparing,
+
     extensions: [
       StarterKit.configure({
         heading: false,
@@ -64,10 +85,14 @@ const RichtextEditor = ({
       }),
     ],
     content,
+
     onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
+      if (onChange) {
+        onChange(editor.getHTML());
+      }
       onDocChanged?.();
     },
+
     editorProps: {
       attributes: {
         class:
@@ -77,9 +102,7 @@ const RichtextEditor = ({
   });
 
   useEffect(() => {
-    if (editor) {
-      onEditorReady(editor);
-    }
+    if (editor) onEditorReady(editor);
   }, [editor, onEditorReady]);
 
   useEffect(() => {
@@ -88,9 +111,16 @@ const RichtextEditor = ({
     }
   }, [content, editor]);
 
+  useEffect(() => {
+    if (!editor) return;
+    editor.setEditable(editable && !isPreparing);
+  }, [editor, editable, isPreparing]);
+
   return (
     <div className="relative w-full h-full">
-      <SelectionContext.Provider value={{ selectedSectionId, setSelectedSectionId: onSectionSelect }}>
+      <SelectionContext.Provider
+        value={{ selectedSectionId, setSelectedSectionId: onSectionSelect }}
+      >
         <style>{`
           .heading-with-edit {
             display: flex;
@@ -149,6 +179,10 @@ const RichtextEditor = ({
 
         <EditorContent editor={editor} />
       </SelectionContext.Provider>
+
+      {signoff && isCurrent && (
+        <SignoffFooter signoff={signoff} signedBy={signedBy} />
+      )}
     </div>
   );
 };

@@ -41,6 +41,7 @@ export interface Section {
   id?: string;
   title: string;
   content: string;
+  position: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -101,7 +102,6 @@ function childrenToMarkdown(el: Element): string {
   return Array.from(el.childNodes).map(inlineToMarkdown).join("");
 }
 
-
 function blockToLines(el: Element, listDepth = 0): string[] {
   const tag = el.tagName.toLowerCase();
 
@@ -156,7 +156,6 @@ function blockToLines(el: Element, listDepth = 0): string[] {
   return text ? [text] : [];
 }
 
-
 function liToLines(
   li: Element,
   index: number,
@@ -201,22 +200,23 @@ function liToLines(
   return lines;
 }
 
-
 function splitIntoSections(body: Element): Section[] {
   const sections: Section[] = [];
   let currentTitle = "";
   let currentId: string | undefined = undefined;
   let currentLines: string[] = [];
-
+  let position = 0;
   const flush = () => {
     const raw = currentLines.join("\n").trim();
 
     const content = raw.replace(/\n{3,}/g, "\n\n");
 
-    const section: Section = { title: currentTitle, content };
+    const section: Section = { title: currentTitle, content, position };
     if (currentId) section.id = currentId;
+    if (position) section.position = position;
     sections.push(section);
 
+    position = 0;
     currentTitle = "";
     currentId = undefined;
     currentLines = [];
@@ -230,6 +230,9 @@ function splitIntoSections(body: Element): Section[] {
         flush();
       }
       currentTitle = childrenToMarkdown(node).trim();
+      position = (node as Element).getAttribute("data-section-position")
+        ? Number((node as Element).getAttribute("data-section-position"))
+        : 0;
       currentId =
         (node as Element).getAttribute("data-section-id") ?? undefined;
     } else {
@@ -248,7 +251,6 @@ function splitIntoSections(body: Element): Section[] {
 
   return sections;
 }
-
 
 export function htmlToSections(html: string): Section[] {
   if (!html?.trim()) return [];

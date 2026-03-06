@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { BookOpen, Mic, Save, Wand2 } from "lucide-react";
+import { BookOpen, Mic, Save, Signature, Wand2 } from "lucide-react";
 import { useState } from "react";
 import ReferenceViewer from "../discharge/ReferenceViewer";
 import VersionHistoryDropdown, {
@@ -7,6 +7,9 @@ import VersionHistoryDropdown, {
 } from "../discharge/VersionHistoryDropdown";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import DraftSummaryToolbar from "./DraftSummaryToolbar";
+import PatientDropdown, {
+  type PatientProps,
+} from "../discharge/PatientDropdown";
 
 interface Reference {
   id: string;
@@ -14,7 +17,8 @@ interface Reference {
   content: string;
 }
 
-interface DraftSummaryHeaderProps extends VersionHistoryDropdownProps {
+interface DraftSummaryHeaderProps
+  extends VersionHistoryDropdownProps, PatientProps {
   onRefresh: () => void;
   onVoiceClick: () => void;
   onSave: () => void;
@@ -24,9 +28,10 @@ interface DraftSummaryHeaderProps extends VersionHistoryDropdownProps {
   editor: any;
   dirty?: boolean;
   isPreviewing?: boolean;
-
+  openSignoff: () => void;
   voiceDisabled?: boolean;
   references?: Reference[];
+  inlineDirty?: boolean;
 }
 
 const DraftSummaryHeader = ({
@@ -35,12 +40,19 @@ const DraftSummaryHeader = ({
   onSave,
   isPreparing,
   editor,
+  signoff,
   dirty,
   isPreviewing,
   references = [],
   isContentLoading,
   voiceDisabled,
+  openSignoff,
   setShowInlineConfirm,
+  inlineDirty,
+  setAccountNumber,
+  setPatientId,
+  patientId,
+  accountNumber,
   ...props
 }: DraftSummaryHeaderProps) => {
   const [showRefs, setShowRefs] = useState(false);
@@ -48,7 +60,6 @@ const DraftSummaryHeader = ({
   return (
     <>
       <header className="flex items-center justify-between px-4 py-3 border-b bg-card shadow-sm sticky top-0 z-10">
-        {/* Left: toolbar + status badges */}
         <div className="flex items-center gap-3">
           <DraftSummaryToolbar editor={editor} />
 
@@ -81,62 +92,82 @@ const DraftSummaryHeader = ({
             )}
         </div>
 
-        {/* Right: actions */}
-        <div className="flex items-center gap-2">
-          <VersionHistoryDropdown {...props} />
+        {
+          <div className="flex items-center gap-2">
+            <PatientDropdown
+              setAccountNumber={setAccountNumber}
+              setPatientId={setPatientId}
+              patientId={patientId}
+              accountNumber={accountNumber}
+            />
+            <VersionHistoryDropdown {...props} signoff={signoff} />
 
-          {/* References toggle */}
-          {references.length > 0 && (
-            <Button
-              variant={showRefs ? "secondary" : "outline"}
-              size="sm"
-              onClick={() => setShowRefs((v) => !v)}
-              className="gap-2 rounded-full transition-colors"
-            >
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
-              <span>References</span>
-              {references.length > 0 && (
-                <span className="text-[10px] bg-muted-foreground/15 text-muted-foreground px-1.5 py-0.5 rounded-full font-medium">
-                  {references.length}
-                </span>
-              )}
-            </Button>
-          )}
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowInlineConfirm(true)}
-            className="gap-2 rounded-full"
-            disabled={isContentLoading || voiceDisabled}
-          >
-            <Save className="h-4 w-4 text-muted-foreground" />
-            <span>Save</span>
-          </Button>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span>
+            {references.length > 0 && (
+              <Button
+                variant={showRefs ? "secondary" : "outline"}
+                size="sm"
+                onClick={() => setShowRefs((v) => !v)}
+                className="gap-2 rounded-full transition-colors"
+              >
+                <BookOpen className="h-4 w-4 text-muted-foreground" />
+                <span>References</span>
+                {references.length > 0 && (
+                  <span className="text-[10px] bg-muted-foreground/15 text-muted-foreground px-1.5 py-0.5 rounded-full font-medium">
+                    {references.length}
+                  </span>
+                )}
+              </Button>
+            )}
+            {!signoff?.isSigned && (
+              <>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={onVoiceClick}
-                  disabled={voiceDisabled}
-                  className="gap-2 rounded-full border-primary/20 hover:border-primary/50 transition-colors"
+                  onClick={() => setShowInlineConfirm(true)}
+                  className="gap-2 rounded-full"
+                  disabled={isContentLoading || voiceDisabled || !inlineDirty}
                 >
-                  <Mic className="h-4 w-4 text-primary" />
-                  <span>Voice</span>
+                  <Save className="h-4 w-4 text-muted-foreground" />
+                  <span>Save</span>
                 </Button>
-              </span>
-            </TooltipTrigger>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 rounded-full"
+                  disabled={isContentLoading || voiceDisabled}
+                  onClick={openSignoff}
+                >
+                  <Signature className="h-4 w-4 text-muted-foreground" />
+                  <span>Sign off</span>
+                </Button>
 
-            {voiceDisabled && (
-              <TooltipContent side="bottom">
-                To start making changes, please make this version current first.
-              </TooltipContent>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={onVoiceClick}
+                        disabled={voiceDisabled}
+                        className="gap-2 rounded-full border-primary/20 hover:border-primary/50 transition-colors"
+                      >
+                        <Mic className="h-4 w-4 text-primary" />
+                        <span>Voice</span>
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+
+                  {voiceDisabled && (
+                    <TooltipContent side="bottom">
+                      To start making changes, please make this version current
+                      first.
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </>
             )}
-          </Tooltip>
-        </div>
+          </div>
+        }
       </header>
 
       <ReferenceViewer

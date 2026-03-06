@@ -2,7 +2,6 @@ import React, {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -48,6 +47,14 @@ export interface InlineSection {
   id?: string;
   title: string;
   content: string;
+  position: number;
+}
+
+export interface SignoffData {
+  signatureDataUrl: string;
+  signedAt: string;
+  signedBy: string;
+  isSigned: boolean;
 }
 
 interface DraftContextValue {
@@ -62,7 +69,6 @@ interface DraftContextValue {
   dirty: boolean;
   lastEdits: AgentResult | null;
 
-  // Loading states
   isPreparing: boolean;
   isInvoking: boolean;
   isSaving: boolean;
@@ -72,6 +78,13 @@ interface DraftContextValue {
   isPreviewing: boolean;
   isAnyLoading: boolean;
 
+  signoff: SignoffData | null;
+  isSigned: boolean;
+  openSignoff: boolean;
+  setOpenSignoff: (open: boolean) => void;
+  handleSignoffConfirm: (signatureDataUrl: string) => void;
+  setPatientId: (patientId: string) => void;
+  setAccountNumber: (accountNumber: string) => void;
   prepareDraft: (patientId: string, accountNumber: string) => Promise<void>;
   invokeAgent: (messages: any[], sectionId?: string | null) => Promise<void>;
   discardDraft: () => Promise<void>;
@@ -95,8 +108,8 @@ const JSON_HEADERS = { "Content-Type": "application/json" };
 export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [patientId, setPatientId] = useState<string | null>(null);
-  const [accountNumber, setAccountNumber] = useState<string | null>(null);
+  const [patientId, setPatientId] = useState<string | null>("mrn2096");
+  const [accountNumber, setAccountNumber] = useState<string | null>("acc2096");
   const [sections, setSections] = useState<any[]>([]);
   const [references, setReferences] = useState<Reference[]>([]);
   const [currentVersion, setCurrentVersion] = useState<string | null>(null);
@@ -111,6 +124,11 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isRollingBack, setIsRollingBack] = useState(false);
   const [isInlineSaving, setIsInlineSaving] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
+
+  const [signoff, setSignoff] = useState<SignoffData | null>(null);
+  const [openSignoff, setOpenSignoff] = useState(false);
+
+  const isSigned = !!signoff;
 
   const isAnyLoading =
     isPreparing ||
@@ -130,37 +148,39 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
     return res.json();
   }, []);
 
-  // Warm health endpoint
-  useEffect(() => {
-    try {
-      const base = new URL(BASE_URL);
-      let pathname = base.pathname.replace(/\/+$/, "");
-      pathname = pathname.replace(/\/api(\/v\d+)?$/, "");
-      const healthUrl = new URL(base.origin + pathname + "/health");
-      fetch(healthUrl.toString(), { mode: "cors" }).catch(() => { });
-    } catch (err) {
-      console.error("Health warmup failed:", err);
-    }
-  }, []);
-
-  const loadDraft = useCallback(
+  const loadAllData = useCallback(
     async (pid: string, acc: string) => {
-      const res = await api(`/drafts/${pid}/${acc}`);
-      setSections(res.data.sections ?? []);
-      setReferences(res.data.references ?? []);
-      setCurrentVersion(res.data.currentVersion);
+      const [draftRes, historyRes] = await Promise.all([
+        api(`/drafts/${pid}/${acc}`),
+        api(`/drafts/${pid}/${acc}/history`),
+      ]);
+
+      const draft = draftRes.data;
+
+      setSections(draft.sections ?? []);
+      setReferences(draft.references ?? []);
+      setCurrentVersion(draft.currentVersion);
       setDirty(false);
+      setHistory(historyRes.data ?? []);
+
+      if (draft?.isSigned) {
+        setSignoff({
+          signedBy: draft.signedBy,
+          signatureDataUrl: draft.signature,
+          signedAt: draft.signedAt,
+          isSigned: draft.isSigned,
+        });
+      } else {
+        setSignoff(null);
+      }
     },
     [api],
   );
 
-  const loadHistory = useCallback(
-    async (pid: string, acc: string) => {
-      const res = await api(`/drafts/${pid}/${acc}/history`);
-      setHistory(res.data ?? []);
-    },
-    [api],
-  );
+  const refresh = useCallback(async () => {
+    if (!patientId || !accountNumber) return;
+    await loadAllData(patientId, accountNumber);
+  }, [patientId, accountNumber, loadAllData]);
 
   const prepareDraft = useCallback(
     async (pid: string, acc: string) => {
@@ -176,7 +196,7 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
         setPatientId(pid);
         setAccountNumber(acc);
 
-        await Promise.all([loadDraft(pid, acc), loadHistory(pid, acc)]);
+        await loadAllData(pid, acc);
         toast.success("Draft ready");
       } catch (err: any) {
         toast.error(err?.message || "Server is waking up. Please try again.");
@@ -184,7 +204,7 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
         setIsPreparing(false);
       }
     },
-    [api, loadDraft, loadHistory],
+    [api],
   );
 
   const invokeAgent = useCallback(
@@ -227,24 +247,17 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         setIsSaving(true);
 
-        const res = await api(
-          `/drafts/${patientId}/${accountNumber}/commit`,
-          {
-            method: "POST",
-            headers: JSON_HEADERS,
-            body: JSON.stringify({ createdBy }),
-          },
-        );
+        const res = await api(`/drafts/${patientId}/${accountNumber}/commit`, {
+          method: "POST",
+          headers: JSON_HEADERS,
+          body: JSON.stringify({ createdBy }),
+        });
 
         setCurrentVersion(res.data.version);
         setDirty(false);
         setLastEdits(null);
 
-        await Promise.all([
-          loadDraft(patientId, accountNumber),
-          loadHistory(patientId, accountNumber),
-        ]);
-
+        await refresh();
         toast.success("Changes applied.");
       } catch (err: any) {
         toast.error(err?.message || "Commit failed");
@@ -252,7 +265,7 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
         setIsSaving(false);
       }
     },
-    [api, patientId, accountNumber, loadDraft, loadHistory],
+    [api, patientId, accountNumber, refresh],
   );
 
   const discardDraft = useCallback(async () => {
@@ -263,14 +276,14 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
       setDirty(false);
       setLastEdits(null);
 
-      await loadDraft(patientId, accountNumber);
+      await refresh();
       toast.info("No changes made");
     } catch (err: any) {
       toast.error(err?.message || "Discard failed");
     } finally {
       setIsDiscarding(false);
     }
-  }, [patientId, accountNumber, loadDraft]);
+  }, [patientId, accountNumber, refresh]);
 
   const rollback = useCallback(
     async (version: string) => {
@@ -288,12 +301,7 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
           }),
         });
 
-        await Promise.all([
-          loadDraft(patientId, accountNumber),
-          loadHistory(patientId, accountNumber),
-        ]);
-
-        setDirty(false);
+        await refresh();
         toast.success(`Draft rolled back to ${version}`);
       } catch (err: any) {
         toast.error(err?.message || "Rollback failed");
@@ -301,7 +309,65 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
         setIsRollingBack(false);
       }
     },
-    [api, patientId, accountNumber, loadDraft, loadHistory],
+    [api, patientId, accountNumber, refresh],
+  );
+
+  const handleSignoffConfirm = useCallback(
+    async (signatureDataUrl: string) => {
+      if (!patientId || !accountNumber) return;
+
+      try {
+        setIsSaving(true);
+
+        const timezoneOffset = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+        await api(`/drafts/${patientId}/${accountNumber}/sign`, {
+          method: "POST",
+          headers: JSON_HEADERS,
+          body: JSON.stringify({
+            signedBy: "anonymous",
+            signatureImageData: signatureDataUrl,
+            timezoneOffset,
+          }),
+        });
+
+        setOpenSignoff(false);
+        await refresh();
+
+        toast.success("Document signed and locked");
+      } catch (err: any) {
+        toast.error(err?.message || "Signing failed");
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [api, patientId, accountNumber, refresh],
+  );
+
+  const saveInline = useCallback(
+    async (pid: string, acc: string, inlineSections: InlineSection[]) => {
+      try {
+        setIsInlineSaving(true);
+
+        await api(`/drafts/${pid}/${acc}/save-inline`, {
+          method: "POST",
+          headers: JSON_HEADERS,
+          body: JSON.stringify({
+            patientId: pid,
+            accountNumber: acc,
+            sections: inlineSections,
+          }),
+        });
+
+        await loadAllData(pid, acc);
+        toast.success("Version saved");
+      } catch (err: any) {
+        toast.error(err?.message || "Inline save failed");
+      } finally {
+        setIsInlineSaving(false);
+      }
+    },
+    [api, loadAllData],
   );
 
   const getVersionSnapshot = useCallback(
@@ -324,32 +390,6 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
     [api, patientId, accountNumber],
   );
 
-  const saveInline = useCallback(
-    async (pid: string, acc: string, inlineSections: InlineSection[]) => {
-      try {
-        setIsInlineSaving(true);
-
-        const res = await api(`/drafts/${pid}/${acc}/save-inline`, {
-          method: "POST",
-          headers: JSON_HEADERS,
-          body: JSON.stringify({
-            patientId: pid,
-            accountNumber: acc,
-            sections: inlineSections,
-          }),
-        });
-
-        await Promise.all([loadDraft(pid, acc), loadHistory(pid, acc)]);
-        toast.success(res.message ?? "Version saved");
-      } catch (err: any) {
-        toast.error(err?.message || "Inline save failed");
-      } finally {
-        setIsInlineSaving(false);
-      }
-    },
-    [api, loadDraft, loadHistory],
-  );
-
   const value = useMemo(
     () => ({
       patientId,
@@ -370,6 +410,13 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
       isPreviewing,
       isAnyLoading,
 
+      signoff,
+      isSigned,
+      openSignoff,
+      setOpenSignoff,
+      handleSignoffConfirm,
+      setAccountNumber,
+      setPatientId,
       prepareDraft,
       invokeAgent,
       discardDraft,
@@ -395,6 +442,10 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
       isInlineSaving,
       isPreviewing,
       isAnyLoading,
+      signoff,
+      isSigned,
+      openSignoff,
+      handleSignoffConfirm,
       prepareDraft,
       invokeAgent,
       discardDraft,
@@ -406,9 +457,7 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   return (
-    <DraftContext.Provider value={value}>
-      {children}
-    </DraftContext.Provider>
+    <DraftContext.Provider value={value}>{children}</DraftContext.Provider>
   );
 };
 
