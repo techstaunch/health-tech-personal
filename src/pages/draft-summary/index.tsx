@@ -51,6 +51,10 @@ const DraftSummary = () => {
     openSignoff,
     setOpenSignoff,
     handleSignoffConfirm,
+    patientId,
+    accountNumber,
+    setPatientId,
+    setAccountNumber,
   } = useDraftSummary();
 
   const isContentLoading =
@@ -72,6 +76,10 @@ const DraftSummary = () => {
           }
           setShowVoice(true);
         }}
+        patientId={patientId}
+        accountNumber={accountNumber}
+        setPatientId={setPatientId}
+        setAccountNumber={setAccountNumber}
         onSave={handleSave}
         signoff={signoff}
         isPreparing={isPreparing}

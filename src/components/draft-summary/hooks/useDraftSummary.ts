@@ -11,7 +11,6 @@ import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import { unified } from "unified";
 
-
 export interface EditSection {
   confidence: number;
   original: string;
@@ -26,9 +25,6 @@ export interface EditResponse {
   success: boolean;
   dirty: boolean;
 }
-
-const PATIENT_ID = "mrn2096";
-const ACCOUNT_NUMBER = "acc2096";
 
 async function markdownToHtml(content: string) {
   const file = await unified()
@@ -121,6 +117,10 @@ export const useDraftSummary = () => {
     isAnyLoading,
     signoff,
     isSigned,
+    patientId,
+    accountNumber,
+    setPatientId,
+    setAccountNumber,
     openSignoff,
     setOpenSignoff,
     handleSignoffConfirm,
@@ -139,10 +139,11 @@ export const useDraftSummary = () => {
   const [inlineDirty, setInlineDirty] = useState(false);
   const [showInlineConfirm, setShowInlineConfirm] = useState(false);
 
-  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
-
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(
+    null,
+  );
   const currentHtmlRef = useRef("");
-  const hasPrepared = useRef(false);
+  const hasPrepared = useRef<string | null>(null);
 
   const normalizedCurrentVersion = normalizeVersion(currentVersion);
   const normalizedPreviewVersion = normalizeVersion(previewVersion);
@@ -152,13 +153,14 @@ export const useDraftSummary = () => {
     : true;
 
   useEffect(() => {
-    if (hasPrepared.current) return;
-    hasPrepared.current = true;
-
     const init = async () => {
       try {
+        const key = `${patientId}-${accountNumber}`;
+        hasPrepared.current = key;
+
         setIsPreparing(true);
-        await prepareDraft(PATIENT_ID, ACCOUNT_NUMBER);
+
+        await prepareDraft(patientId || "", accountNumber || "");
       } catch {
         toast.error("Failed to prepare draft");
       } finally {
@@ -166,8 +168,14 @@ export const useDraftSummary = () => {
       }
     };
 
-    init();
-  }, []);
+    if (!patientId || !accountNumber) return;
+
+    const key = `${patientId}-${accountNumber}`;
+
+    if (hasPrepared.current !== key) {
+      init();
+    }
+  }, [patientId, accountNumber]);
 
   const activeSections = useMemo(
     () => previewSections ?? sections,
@@ -175,7 +183,6 @@ export const useDraftSummary = () => {
   );
 
   const renderedHtml = useRenderedHtml(activeSections);
- 
 
   useEffect(() => {
     if (!editor || !renderedHtml) return;
@@ -226,7 +233,7 @@ export const useDraftSummary = () => {
   const handleConfirmInlineSave = useCallback(async () => {
     try {
       const parsedSections = htmlToSections(content);
-      await saveInline(PATIENT_ID, ACCOUNT_NUMBER, parsedSections);
+      await saveInline(patientId || "", accountNumber || "", parsedSections);
       setShowInlineConfirm(false);
       setInlineDirty(false);
       currentHtmlRef.current = content;
@@ -327,7 +334,6 @@ export const useDraftSummary = () => {
     setShowInlineConfirm,
     handleConfirmInlineSave,
     handleDocChanged,
-    // Section selection
     selectedSectionId,
     setSelectedSectionId,
     signoff,
@@ -335,5 +341,9 @@ export const useDraftSummary = () => {
     openSignoff,
     setOpenSignoff,
     handleSignoffConfirm,
+    patientId,
+    accountNumber,
+    setPatientId,
+    setAccountNumber,
   };
 };

@@ -7,6 +7,9 @@ import VersionHistoryDropdown, {
 } from "../discharge/VersionHistoryDropdown";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import DraftSummaryToolbar from "./DraftSummaryToolbar";
+import PatientDropdown, {
+  type PatientProps,
+} from "../discharge/PatientDropdown";
 
 interface Reference {
   id: string;
@@ -14,7 +17,8 @@ interface Reference {
   content: string;
 }
 
-interface DraftSummaryHeaderProps extends VersionHistoryDropdownProps {
+interface DraftSummaryHeaderProps
+  extends VersionHistoryDropdownProps, PatientProps {
   onRefresh: () => void;
   onVoiceClick: () => void;
   onSave: () => void;
@@ -27,7 +31,7 @@ interface DraftSummaryHeaderProps extends VersionHistoryDropdownProps {
   openSignoff: () => void;
   voiceDisabled?: boolean;
   references?: Reference[];
-  inlineDirty?: boolean;  
+  inlineDirty?: boolean;
 }
 
 const DraftSummaryHeader = ({
@@ -45,6 +49,10 @@ const DraftSummaryHeader = ({
   openSignoff,
   setShowInlineConfirm,
   inlineDirty,
+  setAccountNumber,
+  setPatientId,
+  patientId,
+  accountNumber,
   ...props
 }: DraftSummaryHeaderProps) => {
   const [showRefs, setShowRefs] = useState(false);
@@ -52,7 +60,6 @@ const DraftSummaryHeader = ({
   return (
     <>
       <header className="flex items-center justify-between px-4 py-3 border-b bg-card shadow-sm sticky top-0 z-10">
-        {/* Left: toolbar + status badges */}
         <div className="flex items-center gap-3">
           <DraftSummaryToolbar editor={editor} />
 
@@ -87,6 +94,12 @@ const DraftSummaryHeader = ({
 
         {
           <div className="flex items-center gap-2">
+            <PatientDropdown
+              setAccountNumber={setAccountNumber}
+              setPatientId={setPatientId}
+              patientId={patientId}
+              accountNumber={accountNumber}
+            />
             <VersionHistoryDropdown {...props} signoff={signoff} />
 
             {references.length > 0 && (
@@ -105,52 +118,54 @@ const DraftSummaryHeader = ({
                 )}
               </Button>
             )}
-          {!signoff?.isSigned &&  <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowInlineConfirm(true)}
-                className="gap-2 rounded-full"
-                disabled={isContentLoading || voiceDisabled || !inlineDirty}
-              >
-                <Save className="h-4 w-4 text-muted-foreground" />
-                <span>Save</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 rounded-full"
-                disabled={isContentLoading || voiceDisabled}
-                onClick={openSignoff}
-              >
-                <Signature className="h-4 w-4 text-muted-foreground" />
-                <span>Sign off</span>
-              </Button>
+            {!signoff?.isSigned && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowInlineConfirm(true)}
+                  className="gap-2 rounded-full"
+                  disabled={isContentLoading || voiceDisabled || !inlineDirty}
+                >
+                  <Save className="h-4 w-4 text-muted-foreground" />
+                  <span>Save</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 rounded-full"
+                  disabled={isContentLoading || voiceDisabled}
+                  onClick={openSignoff}
+                >
+                  <Signature className="h-4 w-4 text-muted-foreground" />
+                  <span>Sign off</span>
+                </Button>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={onVoiceClick}
-                      disabled={voiceDisabled}
-                      className="gap-2 rounded-full border-primary/20 hover:border-primary/50 transition-colors"
-                    >
-                      <Mic className="h-4 w-4 text-primary" />
-                      <span>Voice</span>
-                    </Button>
-                  </span>
-                </TooltipTrigger>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={onVoiceClick}
+                        disabled={voiceDisabled}
+                        className="gap-2 rounded-full border-primary/20 hover:border-primary/50 transition-colors"
+                      >
+                        <Mic className="h-4 w-4 text-primary" />
+                        <span>Voice</span>
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
 
-                {voiceDisabled && (
-                  <TooltipContent side="bottom">
-                    To start making changes, please make this version current
-                    first.
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            </>}
+                  {voiceDisabled && (
+                    <TooltipContent side="bottom">
+                      To start making changes, please make this version current
+                      first.
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </>
+            )}
           </div>
         }
       </header>

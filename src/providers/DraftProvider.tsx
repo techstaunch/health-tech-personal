@@ -83,7 +83,8 @@ interface DraftContextValue {
   openSignoff: boolean;
   setOpenSignoff: (open: boolean) => void;
   handleSignoffConfirm: (signatureDataUrl: string) => void;
-
+  setPatientId: (patientId: string) => void;
+  setAccountNumber: (accountNumber: string) => void;
   prepareDraft: (patientId: string, accountNumber: string) => Promise<void>;
   invokeAgent: (messages: any[], sectionId?: string | null) => Promise<void>;
   discardDraft: () => Promise<void>;
@@ -107,8 +108,8 @@ const JSON_HEADERS = { "Content-Type": "application/json" };
 export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [patientId, setPatientId] = useState<string | null>(null);
-  const [accountNumber, setAccountNumber] = useState<string | null>(null);
+  const [patientId, setPatientId] = useState<string | null>("mrn2096");
+  const [accountNumber, setAccountNumber] = useState<string | null>("acc2096");
   const [sections, setSections] = useState<any[]>([]);
   const [references, setReferences] = useState<Reference[]>([]);
   const [currentVersion, setCurrentVersion] = useState<string | null>(null);
@@ -147,7 +148,6 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
     return res.json();
   }, []);
 
-  
   const loadAllData = useCallback(
     async (pid: string, acc: string) => {
       const [draftRes, historyRes] = await Promise.all([
@@ -162,7 +162,7 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
       setCurrentVersion(draft.currentVersion);
       setDirty(false);
       setHistory(historyRes.data ?? []);
-      
+
       if (draft?.isSigned) {
         setSignoff({
           signedBy: draft.signedBy,
@@ -204,7 +204,7 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
         setIsPreparing(false);
       }
     },
-    [api, loadAllData],
+    [api],
   );
 
   const invokeAgent = useCallback(
@@ -415,7 +415,8 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
       openSignoff,
       setOpenSignoff,
       handleSignoffConfirm,
-
+      setAccountNumber,
+      setPatientId,
       prepareDraft,
       invokeAgent,
       discardDraft,
