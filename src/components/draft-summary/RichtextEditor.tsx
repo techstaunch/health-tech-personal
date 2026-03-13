@@ -1,4 +1,3 @@
-import SignoffFooter from "@/pages/draft-summary/SignoffFooter";
 import type { SignoffData } from "@/providers/DraftProvider";
 import Heading from "@tiptap/extension-heading";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -65,9 +64,6 @@ const RichtextEditor = ({
   selectedSectionId = null,
   onSectionSelect = () => {},
   editable = true,
-  signoff,
-  signedBy,
-  isCurrent,
 }: RichtextEditorProps) => {
   const editor = useEditor({
     editable: editable && !isPreparing,
@@ -179,10 +175,6 @@ const RichtextEditor = ({
 
         <EditorContent editor={editor} />
       </SelectionContext.Provider>
-
-      {signoff && isCurrent && (
-        <SignoffFooter signoff={signoff} signedBy={signedBy} />
-      )}
     </div>
   );
 };

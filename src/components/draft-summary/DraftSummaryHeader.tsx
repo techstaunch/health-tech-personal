@@ -1,15 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { BookOpen, Mic, Save, Signature, Wand2 } from "lucide-react";
 import { useState } from "react";
+import PatientDropdown, {
+  type PatientProps,
+} from "../discharge/PatientDropdown";
 import ReferenceViewer from "../discharge/ReferenceViewer";
 import VersionHistoryDropdown, {
   type VersionHistoryDropdownProps,
 } from "../discharge/VersionHistoryDropdown";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import DraftSummaryToolbar from "./DraftSummaryToolbar";
-import PatientDropdown, {
-  type PatientProps,
-} from "../discharge/PatientDropdown";
 
 interface Reference {
   id: string;
@@ -99,6 +99,7 @@ const DraftSummaryHeader = ({
               setPatientId={setPatientId}
               patientId={patientId}
               accountNumber={accountNumber}
+              disabled={isContentLoading}
             />
             <VersionHistoryDropdown
               {...props}

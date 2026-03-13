@@ -14,6 +14,7 @@ export interface PatientProps {
   accountNumber: string | null;
   setPatientId: (patientId: string) => void;
   setAccountNumber: (accountNumber: string) => void;
+  disabled?: boolean;
 }
 
 export default function PatientDropdown({
@@ -21,6 +22,7 @@ export default function PatientDropdown({
   accountNumber,
   setPatientId,
   setAccountNumber,
+  disabled,
 }: PatientProps) {
   const [open, setOpen] = useState(false);
 
@@ -48,6 +50,7 @@ export default function PatientDropdown({
         size="sm"
         className="h-8 gap-1.5 text-xs font-medium"
         onClick={() => setOpen((o) => !o)}
+        disabled={disabled}
       >
         <User className="h-3.5 w-3.5 text-muted-foreground" />
 
