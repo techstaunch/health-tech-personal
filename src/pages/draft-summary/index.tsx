@@ -152,7 +152,7 @@ const DraftSummary = () => {
         onConfirm={() => handleSignoffConfirm("")}
         content={{
           title: "Confirm Sign Off",
-          description: "Are you sure to sign off this doc?",
+          description: "Are you sure you want to sign off on this document?",
           actionText: "Sign off",
         }}
       />
