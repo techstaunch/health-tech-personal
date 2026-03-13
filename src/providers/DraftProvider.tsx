@@ -313,7 +313,7 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const handleSignoffConfirm = useCallback(
-    async (signatureDataUrl: string) => {
+    async (_signatureDataUrl: string) => {
       if (!patientId || !accountNumber) return;
 
       try {
@@ -326,7 +326,7 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
           headers: JSON_HEADERS,
           body: JSON.stringify({
             signedBy: "anonymous",
-            signatureImageData: signatureDataUrl,
+            // signatureImageData: signatureDataUrl,
             timezoneOffset,
           }),
         });
