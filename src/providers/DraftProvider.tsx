@@ -326,7 +326,7 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
           headers: JSON_HEADERS,
           body: JSON.stringify({
             signedBy: "anonymous",
-            signatureImageData: signatureDataUrl,
+            // signatureImageData: signatureDataUrl,
             timezoneOffset,
           }),
         });

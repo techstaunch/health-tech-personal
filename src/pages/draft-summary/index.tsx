@@ -5,7 +5,7 @@ import DraftSummaryHeader from "@/components/draft-summary/DraftSummaryHeader";
 import { useDraftSummary } from "@/components/draft-summary/hooks/useDraftSummary";
 import RichtextEditor from "@/components/draft-summary/RichtextEditor";
 import { toast } from "sonner";
-import SignoffModal from "./SignoffModal";
+// import SignoffModal from "./SignoffModal";
 
 const DraftSummary = () => {
   const {
@@ -63,7 +63,8 @@ const DraftSummary = () => {
     isSaving ||
     isRollingBack ||
     isPreviewing ||
-    isPreparing;
+    isPreparing ||
+    loading; // loading from hook represents invokeAgent state
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -136,11 +137,24 @@ const DraftSummary = () => {
         }}
       />
 
+      {/* 
       <SignoffModal
         open={openSignoff}
         onClose={() => setOpenSignoff(false)}
         onConfirm={handleSignoffConfirm}
         loading={isSaving}
+      /> 
+      */}
+
+      <AlertDialog
+        open={openSignoff}
+        onOpenChange={setOpenSignoff}
+        onConfirm={() => handleSignoffConfirm("")}
+        content={{
+          title: "Confirm Sign Off",
+          description: "Are you sure to sign off this doc?",
+          actionText: "Sign off",
+        }}
       />
 
       {showVoice && (

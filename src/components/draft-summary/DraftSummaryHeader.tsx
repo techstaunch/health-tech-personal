@@ -100,7 +100,11 @@ const DraftSummaryHeader = ({
               patientId={patientId}
               accountNumber={accountNumber}
             />
-            <VersionHistoryDropdown {...props} signoff={signoff} />
+            <VersionHistoryDropdown
+              {...props}
+              signoff={signoff}
+              disabled={isContentLoading}
+            />
 
             {references.length > 0 && (
               <Button

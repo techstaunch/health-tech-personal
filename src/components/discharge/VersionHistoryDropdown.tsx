@@ -48,6 +48,7 @@ export interface VersionHistoryDropdownProps {
   onPreview?: (version: string) => void;
   onRestore?: (version: string) => void;
   onCompare?: (version: string) => void;
+  disabled?: boolean;
 }
 
 const VersionHistoryDropdown = ({
@@ -57,6 +58,7 @@ const VersionHistoryDropdown = ({
   onRestore,
   onCompare,
   signoff,
+  disabled,
 }: VersionHistoryDropdownProps) => {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
@@ -100,10 +102,10 @@ const VersionHistoryDropdown = ({
         <Button
           variant="outline"
           size="sm"
-          disabled={!hasMultiple}
+          disabled={!hasMultiple || disabled}
           className="h-8 gap-1.5 text-xs font-medium"
           onClick={() => {
-            if (!hasMultiple) return;
+            if (!hasMultiple || disabled) return;
             setOpen((o) => !o);
           }}
         >
