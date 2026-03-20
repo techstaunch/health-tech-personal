@@ -137,30 +137,79 @@ const RichtextEditor = ({
             line-height: inherit;
           }
           .heading-edit-btn {
-            opacity: 0;
-            transition: all 0.2s ease;
-            background: none;
-            border: none;
+            position: relative;
+            z-index: 1;
+            opacity: 0.3;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: var(--background, #fff);
+            border: 1px solid var(--border, #e2e8f0);
             cursor: pointer;
-            padding: 2px;
-            margin-top: 4px; /* Align with first line of text */
-            border-radius: 6px;
+            width: 32px;
+            height: 32px;
+            margin-top: 2px;
+            border-radius: 50%;
             color: var(--muted-foreground, #64748b);
             display: inline-flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+          }
+          .heading-edit-btn::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            background: conic-gradient(
+              from 0deg,
+              #4285F4,
+              #9B72CB,
+              #D96570,
+              #F48120,
+              #4285F4
+            );
+            border-radius: 50%;
+            z-index: -2;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+          }
+          .heading-edit-btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--background, #fff);
+            border-radius: 50%;
+            z-index: -1;
           }
           .heading-edit-btn:hover {
+            opacity: 1;
             color: var(--foreground, #333);
-            background: var(--accent, rgba(0,0,0,0.06));
+            border-color: var(--primary, #9B72CB);
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
           }
           .heading-with-edit:hover .heading-edit-btn {
             opacity: 1;
           }
+          .heading-with-edit.selected-section .heading-edit-btn::before {
+            opacity: 1;
+            animation: rotate-ai 3s linear infinite;
+            filter: blur(4px);
+          }
           .heading-with-edit.selected-section .heading-edit-btn {
             opacity: 1;
             color: var(--primary, #9B72CB);
+            border-color: transparent;
+            animation: pulse-ai 2s infinite ease-in-out;
+            box-shadow: 0 0 15px var(--primary, rgba(155, 114, 203, 0.4));
+          }
+          @keyframes rotate-ai {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+          @keyframes pulse-ai {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
           }
         `}</style>
 

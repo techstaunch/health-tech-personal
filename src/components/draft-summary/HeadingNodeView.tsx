@@ -1,5 +1,5 @@
 import { NodeViewContent, NodeViewWrapper } from "@tiptap/react";
-import GeminiIcon from "./GeminiIcon";
+import { Pencil } from "lucide-react";
 import { useSelection } from "./SelectionContext";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 
@@ -39,7 +39,7 @@ const HeadingNodeView = ({ node }: { node: any }) => {
                             onClick={handleEditClick}
                             aria-label={`Edit section ${sectionId}`}
                         >
-                            <GeminiIcon isSelected={isSelected} size={30} />
+                            <Pencil size={16} />
                         </button>
                     </TooltipTrigger>
                     <TooltipContent side="right" className="bg-popover text-popover-foreground border shadow-md">
