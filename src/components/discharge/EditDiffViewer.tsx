@@ -171,7 +171,7 @@ const EditDiffViewer: React.FC<Props> = ({
       </div>
     );
   }
- 
+
   if (editResponse.needsClarification) {
     return (
       <div className="border-t border-border bg-card">
@@ -200,7 +200,7 @@ const EditDiffViewer: React.FC<Props> = ({
       </div>
     );
   }
- 
+
   if (!editResponse.edits?.length) {
     return (
       <div className="border-t border-border bg-card">
@@ -219,13 +219,18 @@ const EditDiffViewer: React.FC<Props> = ({
         </div>
         <div className="p-4">
           <p className="text-sm text-muted-foreground text-center py-4">
-            No changes were detected
+            No changes were detected and {" "}
+            {editResponse.message && !editResponse.edits.length && (
+              <span className="text-sm text-muted-foreground">
+                {editResponse.message}
+              </span>
+            )}
           </p>
         </div>
       </div>
     );
   }
-   const handleAccept = async () => {
+  const handleAccept = async () => {
     setILoading(true);
     await commitDraft("anonymous");
     setILoading(false);
@@ -236,10 +241,10 @@ const EditDiffViewer: React.FC<Props> = ({
     onClose?.();
     await handleDiscard();
   };
- 
+
   return (
     <div className="border-t border-border bg-card">
-      <Tabs defaultValue="changes"> 
+      <Tabs defaultValue="changes">
         <div className="flex items-center justify-between px-4 py-2 border-b border-border">
           <TabsList className="h-8">
             <TabsTrigger value="changes" className="text-sm gap-1.5 h-7 px-3">
