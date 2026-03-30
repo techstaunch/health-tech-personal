@@ -59,18 +59,52 @@ You can create a simple wrapper component:
 
 If you need to pass data between the .NET app and the React app, use the `postMessage` API.
 
-**In .NET (JavaScript Interop):**
-```javascript
-const iframe = document.querySelector('iframe');
-iframe.contentWindow.postMessage({ type: 'INIT_DATA', payload: { userId: 123 } }, '*');
+**In React (App.tsx):**
+The React app will notify the parent when it's mounted, validate the received `accessToken` using JWKS, and then store it.
+```typescript
+import { validateToken } from "./utils/validate-token";
+
+// Inside App component
+const handleMessage = async (event: MessageEvent) => {
+  if (event.data && event.data.accessToken) {
+    try {
+      const payload = await validateToken(event.data.accessToken);
+      console.log('Validated payload:', payload);
+      // Store and use the accessToken...
+    } catch (err) {
+      console.error('Invalid token');
+    }
+  }
+};
 ```
 
-**In React (App.tsx):**
+**Utility (src/utils/validate-token.ts):**
 ```typescript
+import * as jose from "jose";
+
+export async function validateToken(token: string) {
+  const JWKS = jose.createRemoteJWKSet(
+    new URL("https://192.168.168.199/DUSAIAPI/api/SainceJWTKSRotation?AppClientID=4")
+  );
+
+  const { payload } = await jose.jwtVerify(token, JWKS, {
+    issuer: "SAINCE",
+    audience: "TECHSTAUNCH",
+    algorithms: ["RS256"],
+  });
+
+  return payload;
+}
+```
+
+**In .NET (JavaScript Interop):**
+Listen for the `READY` message from the React iframe, and then send back the `accessToken`.
+```javascript
 window.addEventListener('message', (event) => {
-  if (event.data.type === 'INIT_DATA') {
-    console.log('Received data from .NET:', event.data.payload);
-  }
+    if (event.data && event.data.type === 'READY') {
+        const iframe = document.querySelector('iframe');
+        iframe.contentWindow.postMessage({ accessToken: 'your-jwt-token-here' }, '*');
+    }
 });
 ```
 

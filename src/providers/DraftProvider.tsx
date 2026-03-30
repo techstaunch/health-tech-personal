@@ -96,18 +96,22 @@ interface DraftContextValue {
     accountNumber: string,
     sections: InlineSection[],
   ) => Promise<void>;
+  accessToken: string | null;
+  setAccessToken: (token: string | null) => void;
 }
 
 const DraftContext = createContext<DraftContextValue | null>(null);
 
-const BASE_URL =
+export const BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v2";
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
-export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+export const DraftProvider: React.FC<{
+  children: React.ReactNode;
+  syncToken?: string | null;
+  syncPayload?: any;
+}> = ({ children, syncToken, syncPayload }) => {
   const [patientId, setPatientId] = useState<string | null>("mrn2096");
   const [accountNumber, setAccountNumber] = useState<string | null>("acc2096");
   const [sections, setSections] = useState<any[]>([]);
@@ -130,6 +134,29 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const isSigned = !!signoff;
 
+  const [accessToken, setAccessToken] = useState<string | null>(
+    localStorage.getItem("accessToken"),
+  );
+
+  // Sync token and identity from props (e.g., from App.tsx/iframe)
+  React.useEffect(() => {
+    if (syncToken) {
+      console.log('syncToken', syncToken);
+      setAccessToken(syncToken);
+      localStorage.setItem("accessToken", syncToken);
+    }
+  }, [syncToken]);
+
+  React.useEffect(() => {
+    if (syncPayload) {
+      // payload contains nameid (MRN), sid (accountNumber)
+      console.log('syncPayload', syncPayload);
+      const data = syncPayload.payload || syncPayload;
+      if (data.nameid) setPatientId(data.nameid);
+      if (data.sid) setAccountNumber(data.sid);
+    }
+  }, [syncPayload]);
+
   const isAnyLoading =
     isPreparing ||
     isInvoking ||
@@ -139,14 +166,27 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
     isInlineSaving ||
     isPreviewing;
 
-  const api = useCallback(async (url: string, options?: RequestInit) => {
-    const res = await fetch(`${BASE_URL}${url}`, options);
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(text || "Request failed");
-    }
-    return res.json();
-  }, []);
+  const api = useCallback(
+    async (url: string, options?: RequestInit) => {
+      const headers = {
+        ...JSON_HEADERS,
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...options?.headers,
+      };
+
+      const res = await fetch(`${BASE_URL}${url}`, {
+        ...options,
+        headers,
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Request failed");
+      }
+      return res.json();
+    },
+    [accessToken],
+  );
 
   const loadAllData = useCallback(
     async (pid: string, acc: string) => {
@@ -176,6 +216,13 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
     },
     [api],
   );
+
+  // Automatically load data when patient identity changes
+  React.useEffect(() => {
+    if (patientId && accountNumber) {
+      loadAllData(patientId, accountNumber);
+    }
+  }, [patientId, accountNumber, loadAllData]);
 
   const refresh = useCallback(async () => {
     if (!patientId || !accountNumber) return;
@@ -424,6 +471,8 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
       rollback,
       getVersionSnapshot,
       saveInline,
+      accessToken,
+      setAccessToken,
     }),
     [
       patientId,
@@ -453,6 +502,7 @@ export const DraftProvider: React.FC<{ children: React.ReactNode }> = ({
       rollback,
       getVersionSnapshot,
       saveInline,
+      accessToken,
     ],
   );
 
