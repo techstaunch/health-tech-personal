@@ -62,16 +62,14 @@ function App() {
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      {isInIframe && (
-        <div className="fixed top-4 right-4 z-[9999]">
-          <button
-            onClick={handleTestToken}
-            className="bg-primary text-white px-4 py-2 rounded-lg shadow-lg hover:bg-primary/90 transition-colors"
-          >
-            T
-          </button>
-        </div>
-      )}
+      <div className="fixed top-4 right-4 z-[9999]">
+        <button
+          onClick={handleTestToken}
+          className="bg-primary text-white px-4 py-2 rounded-lg shadow-lg hover:bg-primary/90 transition-colors"
+        >
+          T
+        </button>
+      </div>
       <BrowserRouter>
         <DraftProvider syncToken={token?.raw} syncPayload={token?.payload}>
           <Routes>
