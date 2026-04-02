@@ -8,7 +8,7 @@ const HeadingNodeView = ({ node }: { node: any }) => {
     const sectionId = node.attrs["data-section-id"];
     const Tag = `h${level}` as "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
 
-    const { selectedSectionId, setSelectedSectionId } = useSelection();
+    const { selectedSectionId, setSelectedSectionId, voiceDisabled } = useSelection();
     const isSelected = selectedSectionId === sectionId;
 
     const handleEditClick = (e: React.MouseEvent) => {
@@ -28,7 +28,7 @@ const HeadingNodeView = ({ node }: { node: any }) => {
         >
             <NodeViewContent as={"span" as any} className="heading-content" />
 
-            {sectionId && (
+            {sectionId && !voiceDisabled && (
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <button

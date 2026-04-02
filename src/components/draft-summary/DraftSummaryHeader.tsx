@@ -1,9 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { BookOpen, Mic, Save, Signature, Wand2 } from "lucide-react";
 import { useState } from "react";
-import PatientDropdown, {
-  type PatientProps,
-} from "../discharge/PatientDropdown";
 import ReferenceViewer from "../discharge/ReferenceViewer";
 import VersionHistoryDropdown, {
   type VersionHistoryDropdownProps,
@@ -18,7 +15,7 @@ interface Reference {
 }
 
 interface DraftSummaryHeaderProps
-  extends VersionHistoryDropdownProps, PatientProps {
+  extends VersionHistoryDropdownProps {
   onRefresh: () => void;
   onVoiceClick: () => void;
   onSave: () => void;
@@ -32,6 +29,8 @@ interface DraftSummaryHeaderProps
   voiceDisabled?: boolean;
   references?: Reference[];
   inlineDirty?: boolean;
+  patientId?: string;
+  accountNumber?: string;
 }
 
 const DraftSummaryHeader = ({
@@ -49,8 +48,6 @@ const DraftSummaryHeader = ({
   openSignoff,
   setShowInlineConfirm,
   inlineDirty,
-  setAccountNumber,
-  setPatientId,
   patientId,
   accountNumber,
   ...props
@@ -59,9 +56,25 @@ const DraftSummaryHeader = ({
 
   return (
     <>
-      <header className="flex items-center justify-between px-4 py-3 border-b bg-card shadow-sm sticky top-0 z-10">
-        <div className="flex items-center gap-3">
+      <header className="flex flex-col lg:flex-row lg:items-center justify-between px-4 py-3 border-b bg-card shadow-sm sticky top-0 z-10 gap-4 lg:gap-0">
+        <div className="flex flex-wrap items-center gap-3">
           <DraftSummaryToolbar editor={editor} />
+
+          {(patientId || accountNumber) && (
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="hidden sm:block h-4 w-px bg-border mx-1" />
+              {patientId && (
+                <span className="text-[11px] text-muted-foreground bg-muted/40 border px-2 py-1 rounded-md">
+                  patientId: <span className="font-medium text-foreground">{patientId}</span>
+                </span>
+              )}
+              {accountNumber && (
+                <span className="text-[11px] text-muted-foreground bg-muted/40 border px-2 py-1 rounded-md">
+                  accountNumber: <span className="font-medium text-foreground">{accountNumber}</span>
+                </span>
+              )}
+            </div>
+          )}
 
           {isPreparing && (
             <div className="flex items-center gap-2 px-3 py-1 bg-primary/5 text-primary text-xs font-medium rounded-full animate-pulse">
@@ -93,14 +106,7 @@ const DraftSummaryHeader = ({
         </div>
 
         {
-          <div className="flex items-center gap-2">
-            <PatientDropdown
-              setAccountNumber={setAccountNumber}
-              setPatientId={setPatientId}
-              patientId={patientId}
-              accountNumber={accountNumber}
-              disabled={isContentLoading}
-            />
+          <div className="flex flex-wrap items-center gap-2 mt-2 lg:mt-0">
             <VersionHistoryDropdown
               {...props}
               signoff={signoff}
@@ -108,20 +114,31 @@ const DraftSummaryHeader = ({
             />
 
             {references.length > 0 && (
-              <Button
-                variant={showRefs ? "secondary" : "outline"}
-                size="sm"
-                onClick={() => setShowRefs((v) => !v)}
-                className="gap-2 rounded-full transition-colors"
-              >
-                <BookOpen className="h-4 w-4 text-muted-foreground" />
-                <span>References</span>
-                {references.length > 0 && (
-                  <span className="text-[10px] bg-muted-foreground/15 text-muted-foreground px-1.5 py-0.5 rounded-full font-medium">
-                    {references.length}
-                  </span>
-                )}
-              </Button>
+              <div className="relative">
+                <Button
+                  variant={showRefs ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowRefs((v) => !v);
+                  }}
+                  className="gap-2 rounded-full transition-colors"
+                >
+                  <BookOpen className="h-4 w-4 text-muted-foreground" />
+                  <span>References</span>
+                  {references.length > 0 && (
+                    <span className="text-[10px] bg-muted-foreground/15 text-muted-foreground px-1.5 py-0.5 rounded-full font-medium">
+                      {references.length}
+                    </span>
+                  )}
+                </Button>
+
+                <ReferenceViewer
+                  open={showRefs}
+                  onClose={() => setShowRefs(false)}
+                  references={references}
+                />
+              </div>
             )}
             {!signoff?.isSigned && (
               <>
@@ -175,11 +192,6 @@ const DraftSummaryHeader = ({
         }
       </header>
 
-      <ReferenceViewer
-        open={showRefs}
-        onClose={() => setShowRefs(false)}
-        references={references}
-      />
     </>
   );
 };

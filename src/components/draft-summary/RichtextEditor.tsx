@@ -20,6 +20,7 @@ interface RichtextEditorProps {
   signoff?: SignoffData | null;
   signedBy?: string;
   isCurrent: boolean;
+  voiceDisabled?: boolean;
 }
 
 const HeadingWithId = Heading.extend({
@@ -62,8 +63,9 @@ const RichtextEditor = ({
   onDocChanged,
   isPreparing = false,
   selectedSectionId = null,
-  onSectionSelect = () => {},
+  onSectionSelect = () => { },
   editable = true,
+  voiceDisabled = false,
 }: RichtextEditorProps) => {
   const editor = useEditor({
     editable: editable && !isPreparing,
@@ -115,7 +117,7 @@ const RichtextEditor = ({
   return (
     <div className="relative w-full h-full">
       <SelectionContext.Provider
-        value={{ selectedSectionId, setSelectedSectionId: onSectionSelect }}
+        value={{ selectedSectionId, setSelectedSectionId: onSectionSelect, voiceDisabled }}
       >
         <style>{`
           .heading-with-edit {

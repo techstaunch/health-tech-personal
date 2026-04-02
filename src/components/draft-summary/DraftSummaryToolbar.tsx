@@ -54,8 +54,8 @@ const TooltipButton = ({
 
 const DraftSummaryToolbar = ({ editor }: DraftSummaryToolbarProps) => {
   return (
-    <div className="flex items-center justify-center gap-1">
-      <div className="flex items-center bg-card/50 rounded-lg border p-0.5 gap-0.5 shadow-sm">
+    <div className="flex flex-wrap items-center gap-1">
+      <div className="flex flex-wrap items-center bg-card/50 rounded-lg border p-0.5 gap-0.5 shadow-sm">
         <TooltipButton
           icon={Undo}
           label="Undo"
@@ -70,9 +70,9 @@ const DraftSummaryToolbar = ({ editor }: DraftSummaryToolbarProps) => {
         />
       </div>
 
-      <div className="w-[1px] h-4 bg-border mx-1" />
+      <div className="hidden sm:block w-[1px] h-4 bg-border mx-1" />
 
-      <div className="flex items-center bg-card/50 rounded-lg border p-0.5 gap-0.5 shadow-sm">
+      <div className="flex flex-wrap items-center bg-card/50 rounded-lg border p-0.5 gap-0.5 shadow-sm">
         <TooltipButton
           icon={Bold}
           label="Bold"
@@ -93,9 +93,9 @@ const DraftSummaryToolbar = ({ editor }: DraftSummaryToolbarProps) => {
         />
       </div>
 
-      <div className="w-[1px] h-4 bg-border mx-1" />
+      <div className="hidden sm:block w-[1px] h-4 bg-border mx-1" />
 
-      <div className="flex items-center bg-card/50 rounded-lg border p-0.5 gap-0.5 shadow-sm">
+      <div className="flex flex-wrap items-center bg-card/50 rounded-lg border p-0.5 gap-0.5 shadow-sm">
         <TooltipButton
           icon={Heading1}
           label="Heading 1"
@@ -120,9 +120,9 @@ const DraftSummaryToolbar = ({ editor }: DraftSummaryToolbarProps) => {
         />
       </div>
 
-      <div className="w-[1px] h-4 bg-border mx-1" />
+      <div className="hidden sm:block w-[1px] h-4 bg-border mx-1" />
 
-      <div className="flex items-center bg-card/50 rounded-lg border p-0.5 gap-0.5 shadow-sm">
+      <div className="flex flex-wrap items-center bg-card/50 rounded-lg border p-0.5 gap-0.5 shadow-sm">
         <TooltipButton
           icon={List}
           label="Bullet List"

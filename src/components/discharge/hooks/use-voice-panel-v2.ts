@@ -1,4 +1,4 @@
-import { useAudioRecorder, useBackendTranscription } from "@/hooks";
+import { useAudioRecorder, useTranscription } from "@/hooks";
 import { useEffect, useMemo, useRef } from "react";
 
 interface UseVoiceProps {
@@ -39,7 +39,7 @@ const useVoice = ({ onTranscript, onClose }: UseVoiceProps) => {
         error: transcriptionError,
         transcribe,
         clearTranscript,
-    } = useBackendTranscription(transcriptionOptions);
+    } = useTranscription(transcriptionOptions);
 
     // Track last transcribed blob to prevent duplicate calls
     const lastTranscribedBlobRef = useRef<Blob | null>(null);

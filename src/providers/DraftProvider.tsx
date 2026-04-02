@@ -88,7 +88,7 @@ interface DraftContextValue {
   prepareDraft: (patientId: string, accountNumber: string) => Promise<void>;
   invokeAgent: (messages: any[], sectionId?: string | null) => Promise<void>;
   discardDraft: () => Promise<void>;
-  commitDraft: (createdBy: string) => Promise<void>;
+  commitDraft: (createdBy?: string) => Promise<void>;
   rollback: (version: string) => Promise<void>;
   getVersionSnapshot: (version: string) => Promise<VersionSnapshot | null>;
   saveInline: (
@@ -98,12 +98,13 @@ interface DraftContextValue {
   ) => Promise<void>;
   accessToken: string | null;
   setAccessToken: (token: string | null) => void;
+  userId: string;
 }
 
 const DraftContext = createContext<DraftContextValue | null>(null);
 
 export const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v2";
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/clinical";
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
@@ -112,8 +113,9 @@ export const DraftProvider: React.FC<{
   syncToken?: string | null;
   syncPayload?: any;
 }> = ({ children, syncToken, syncPayload }) => {
-  const [patientId, setPatientId] = useState<string | null>("mrn2096");
-  const [accountNumber, setAccountNumber] = useState<string | null>("acc2096");
+  const [patientId, setPatientId] = useState<string | null>("");
+  const [accountNumber, setAccountNumber] = useState<string | null>("");
+  const [userId, setUserId] = useState<string>("anonymous");
   const [sections, setSections] = useState<any[]>([]);
   const [references, setReferences] = useState<Reference[]>([]);
   const [currentVersion, setCurrentVersion] = useState<string | null>(null);
@@ -149,11 +151,12 @@ export const DraftProvider: React.FC<{
 
   React.useEffect(() => {
     if (syncPayload) {
-      // payload contains nameid (MRN), sid (accountNumber)
+      // payload contains nameid (MRN), sid (accountNumber), sub (userId)
       console.log('syncPayload', syncPayload);
       const data = syncPayload.payload || syncPayload;
       if (data.nameid) setPatientId(data.nameid);
       if (data.sid) setAccountNumber(data.sid);
+      if (data.sub) setUserId(data.sub);
     }
   }, [syncPayload]);
 
@@ -237,7 +240,7 @@ export const DraftProvider: React.FC<{
         await api("/prepare-draft", {
           method: "POST",
           headers: JSON_HEADERS,
-          body: JSON.stringify({ patientId: pid, accountNumber: acc }),
+          body: JSON.stringify({ patientId: pid, accountNumber: acc, createdBy: userId }),
         });
 
         setPatientId(pid);
@@ -251,7 +254,7 @@ export const DraftProvider: React.FC<{
         setIsPreparing(false);
       }
     },
-    [api],
+    [api, loadAllData, userId],
   );
 
   const invokeAgent = useCallback(
@@ -288,7 +291,7 @@ export const DraftProvider: React.FC<{
   );
 
   const commitDraft = useCallback(
-    async (createdBy: string) => {
+    async (createdBy?: string) => {
       if (!patientId || !accountNumber) return;
 
       try {
@@ -297,7 +300,7 @@ export const DraftProvider: React.FC<{
         const res = await api(`/drafts/${patientId}/${accountNumber}/commit`, {
           method: "POST",
           headers: JSON_HEADERS,
-          body: JSON.stringify({ createdBy }),
+          body: JSON.stringify({ createdBy: createdBy || userId }),
         });
 
         setCurrentVersion(res.data.version);
@@ -312,7 +315,7 @@ export const DraftProvider: React.FC<{
         setIsSaving(false);
       }
     },
-    [api, patientId, accountNumber, refresh],
+    [api, patientId, accountNumber, refresh, userId],
   );
 
   const discardDraft = useCallback(async () => {
@@ -344,7 +347,7 @@ export const DraftProvider: React.FC<{
           headers: JSON_HEADERS,
           body: JSON.stringify({
             targetVersion: version,
-            createdBy: "anonymous",
+            createdBy: userId,
           }),
         });
 
@@ -356,7 +359,7 @@ export const DraftProvider: React.FC<{
         setIsRollingBack(false);
       }
     },
-    [api, patientId, accountNumber, refresh],
+    [api, patientId, accountNumber, refresh, userId],
   );
 
   const handleSignoffConfirm = useCallback(
@@ -372,7 +375,7 @@ export const DraftProvider: React.FC<{
           method: "POST",
           headers: JSON_HEADERS,
           body: JSON.stringify({
-            signedBy: "anonymous",
+            signedBy: userId,
             // signatureImageData: signatureDataUrl,
             timezoneOffset,
           }),
@@ -388,7 +391,7 @@ export const DraftProvider: React.FC<{
         setIsSaving(false);
       }
     },
-    [api, patientId, accountNumber, refresh],
+    [api, patientId, accountNumber, refresh, userId],
   );
 
   const saveInline = useCallback(
@@ -403,6 +406,7 @@ export const DraftProvider: React.FC<{
             patientId: pid,
             accountNumber: acc,
             sections: inlineSections,
+            createdBy: userId,
           }),
         });
 
@@ -414,7 +418,7 @@ export const DraftProvider: React.FC<{
         setIsInlineSaving(false);
       }
     },
-    [api, loadAllData],
+    [api, loadAllData, userId],
   );
 
   const getVersionSnapshot = useCallback(
@@ -473,6 +477,7 @@ export const DraftProvider: React.FC<{
       saveInline,
       accessToken,
       setAccessToken,
+      userId,
     }),
     [
       patientId,
@@ -503,6 +508,7 @@ export const DraftProvider: React.FC<{
       getVersionSnapshot,
       saveInline,
       accessToken,
+      userId,
     ],
   );
 
