@@ -1,11 +1,11 @@
 import { useCallback, useState } from "react";
 
-interface UseBackendTranscriptionOptions {
+interface UseTranscriptionOptions {
   onSuccess?: (transcript: string) => void;
   onError?: (error: Error) => void;
 }
 
-interface UseBackendTranscriptionReturn {
+interface UseTranscriptionReturn {
   transcript: string;
   isTranscribing: boolean;
   error: string | null;
@@ -16,9 +16,9 @@ interface UseBackendTranscriptionReturn {
 /**
  * Custom hook for transcribing audio using the backend endpoint
  */
-export const useBackendTranscription = (
-  options: UseBackendTranscriptionOptions = {},
-): UseBackendTranscriptionReturn => {
+export const useTranscription = (
+  options: UseTranscriptionOptions = {},
+): UseTranscriptionReturn => {
   const { onSuccess, onError } = options;
 
   const [transcript, setTranscript] = useState("");

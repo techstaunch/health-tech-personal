@@ -4,6 +4,7 @@ import DiffMatchPatch from "diff-match-patch";
 import { CheckCircle2, GitCompare, X } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import type { EditResponse } from "../draft-summary/hooks/useDraftSummary";
+import { useDraft } from "@/providers/DraftProvider";
 
 const dmp = new DiffMatchPatch();
 
@@ -111,7 +112,7 @@ interface Props {
   editResponse: EditResponse | null;
   loading: boolean;
   onClose?: () => void;
-  commitDraft: (createdBy: string) => Promise<void>;
+  commitDraft: (createdBy?: string) => Promise<void>;
   handleDiscard: () => Promise<void>;
 }
 
@@ -122,6 +123,7 @@ const EditDiffViewer: React.FC<Props> = ({
   commitDraft,
   handleDiscard,
 }) => {
+  const { userId } = useDraft();
   const [iLoading, setILoading] = useState(false);
   if (loading || iLoading) {
     return (
@@ -232,7 +234,7 @@ const EditDiffViewer: React.FC<Props> = ({
   }
   const handleAccept = async () => {
     setILoading(true);
-    await commitDraft("anonymous");
+    await commitDraft(userId);
     setILoading(false);
     onClose?.();
   };

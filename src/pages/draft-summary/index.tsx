@@ -53,8 +53,6 @@ const DraftSummary = () => {
     handleSignoffConfirm,
     patientId,
     accountNumber,
-    setPatientId,
-    setAccountNumber,
   } = useDraftSummary();
 
   const isContentLoading =
@@ -77,10 +75,6 @@ const DraftSummary = () => {
           }
           setShowVoice(true);
         }}
-        patientId={patientId}
-        accountNumber={accountNumber}
-        setPatientId={setPatientId}
-        setAccountNumber={setAccountNumber}
         onSave={handleSave}
         signoff={signoff}
         isPreparing={isPreparing}
@@ -99,6 +93,8 @@ const DraftSummary = () => {
         inlineDirty={inlineDirty}
         setShowInlineConfirm={setShowInlineConfirm}
         openSignoff={() => setOpenSignoff(true)}
+        patientId={patientId || undefined}
+        accountNumber={accountNumber || undefined}
       />
 
       <main className="flex-1 p-4 md:p-8 overflow-auto flex justify-center bg-muted/10">
@@ -112,6 +108,7 @@ const DraftSummary = () => {
             selectedSectionId={selectedSectionId}
             onSectionSelect={setSelectedSectionId}
             editable={!isSigned}
+            voiceDisabled={!canEnableVoice || isContentLoading || isSigned}
             signoff={signoff}
             isCurrent={
               previewVersion ? previewVersion === currentVersion : true
@@ -136,15 +133,6 @@ const DraftSummary = () => {
           actionText: "Save version",
         }}
       />
-
-      {/* 
-      <SignoffModal
-        open={openSignoff}
-        onClose={() => setOpenSignoff(false)}
-        onConfirm={handleSignoffConfirm}
-        loading={isSaving}
-      /> 
-      */}
 
       <AlertDialog
         open={openSignoff}

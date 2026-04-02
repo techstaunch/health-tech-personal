@@ -124,6 +124,7 @@ export const useDraftSummary = () => {
     openSignoff,
     setOpenSignoff,
     handleSignoffConfirm,
+    userId,
   } = useDraft();
 
   const [editor, setEditor] = useState<any>(null);
@@ -223,7 +224,7 @@ export const useDraftSummary = () => {
     }
 
     try {
-      await commitDraft("anonymous");
+      await commitDraft(userId);
       toast.success("Version committed");
     } catch (err: any) {
       toast.error(err.message);

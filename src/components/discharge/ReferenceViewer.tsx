@@ -159,7 +159,7 @@ const ReferenceViewer = ({
     <>
       <div
         ref={popupRef}
-        className="fixed top-14 right-36 z-50 w-72 bg-card border border-border rounded-xl shadow-xl flex flex-col"
+        className="absolute top-full right-0 mt-2 z-50 w-72 bg-card border border-border rounded-xl shadow-xl flex flex-col"
         style={{ maxHeight: "min(360px, calc(100vh - 80px))" }}
       >
         <div className="flex items-center justify-between px-3 py-2.5 border-b border-border shrink-0">
