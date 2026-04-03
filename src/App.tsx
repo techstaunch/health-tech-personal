@@ -79,7 +79,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route
-            path="/"
+            path="/test"
             element={
               <DraftProvider
                 syncToken={token?.raw}
@@ -90,7 +90,7 @@ function App() {
             }
           />
           <Route
-            path="/test"
+            path="/"
             element={
               <DraftProvider
                 syncToken={mockToken.raw}
