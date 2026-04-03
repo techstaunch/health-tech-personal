@@ -50,11 +50,8 @@
 
                 const iframe = document.getElementById('health-tech-iframe');
 
-                // Using Vite's HTML env replacement to inject the test token from .env
-                const testToken = "%VITE_TEST_TOKEN%";
-
                 if (iframe && iframe.contentWindow) {
-                    iframe.contentWindow.postMessage({ accessToken: testToken }, '*');
+                    iframe.contentWindow.postMessage({ accessToken: token }, '*');
                 }
             }
         });

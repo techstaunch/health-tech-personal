@@ -6,57 +6,61 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 import DraftSummary from "./pages/draft-summary";
 import { DraftProvider } from "./providers/DraftProvider";
-import { useState } from "react";
-// import { useValidateToken } from "./hooks/use-validate-token";
+import { useEffect, useState } from "react";
+import { useValidateToken } from "./hooks/use-validate-token";
 
 function App() {
-  const [token] = useState<{ raw: string; payload: any } | null>({
-    raw: import.meta.env.VITE_TEST_TOKEN,
-    payload: {
-      "sub": "237",
-      "iat": "1775114120",
-      "nameid": "mrn004",
-      "sid": "acc004",
-      "nbf": 1775114120,
-      "exp": 1775115920,
-      "iss": "SAINCE",
-      "aud": "TECHSTAUNCH"
-    },
-  });
-  // const { validate } = useValidateToken();
-  // const isInIframe = window.self !== window.top;
+  const [token, setToken] = useState<{ raw: string; payload: any } | null>(null);
+  const { validate } = useValidateToken();
+  const isInIframe = window.self !== window.top;
 
-  // useEffect(() => {
-  //   if (isInIframe) {
-  //     console.log("App is running inside an iframe");
+  useEffect(() => {
+    // 1. Initial check: If token is in localStorage, use it immediately
+    const storedToken = localStorage.getItem("accessToken");
+    if (storedToken && !token) {
+      console.log("Loading existing token from localStorage");
+      setToken({ raw: storedToken, payload: null });
+    }
+  }, []);
 
-  //     // Notify parent .NET app that React is ready
-  //     window.parent.postMessage({ type: "READY" }, "*");
+  useEffect(() => {
+    if (isInIframe) {
+      console.log("App is running inside an iframe, notifying parent...");
+      // Notify parent .NET app that React is ready
+      window.parent.postMessage({ type: "READY" }, "*");
+    }
+  }, [isInIframe]);
 
-  //     // Listen for accessToken from the parent window
-  //     const handleMessage = async (event: MessageEvent) => {
-  //       if (event.data && event.data.accessToken) {
-  //         console.log("Received accessToken from parent app");
-  //         try {
-  //           const payload = await validate(event.data.accessToken);
-  //           console.log("Token validated successfully (Backend):", payload);
-  //           setToken({ raw: event.data.accessToken, payload });
+  useEffect(() => {
+    if (isInIframe) {
+      const handleMessage = async (event: MessageEvent) => {
+        // SECURITY NOTE: In production, uncomment and set your allowed origin
+        // if (event.origin !== "https://your-parent-app.com") return;
 
-  //           // Store token in localStorage
-  //           localStorage.setItem("accessToken", event.data.accessToken);
-  //         } catch (error) {
-  //           console.error("Failed to validate token from parent app");
-  //         }
-  //       }
-  //     };
+        if (event.data && event.data.accessToken) {
+          // Use the current token value from state
+          if (token?.raw === event.data.accessToken) {
+            console.log("Received same token, skipping validation.");
+            return;
+          }
 
-  //     window.addEventListener("message", handleMessage);
+          console.log("Received new accessToken from parent app");
+          try {
+            const payload = await validate(event.data.accessToken);
+            setToken({ raw: event.data.accessToken, payload });
+            localStorage.setItem("accessToken", event.data.accessToken);
+          } catch (error) {
+            console.error("Failed to validate token from parent app");
+          }
+        }
+      };
 
-  //     return () => {
-  //       window.removeEventListener("message", handleMessage);
-  //     };
-  //   }
-  // }, [isInIframe]);
+      window.addEventListener("message", handleMessage);
+      return () => {
+        window.removeEventListener("message", handleMessage);
+      };
+    }
+  }, [isInIframe, token?.raw, validate]);
 
   // const handleTestToken = async () => {
   //   const testToken = import.meta.env.VITE_TEST_TOKEN;
