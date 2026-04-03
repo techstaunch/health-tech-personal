@@ -10,12 +10,13 @@ import { useEffect, useState } from "react";
 import { useValidateToken } from "./hooks/use-validate-token";
 
 function App() {
-  const [token, setToken] = useState<{ raw: string; payload: any } | null>(null);
+  const [token, setToken] = useState<{ raw: string; payload: any } | null>(
+    null,
+  );
   const { validate } = useValidateToken();
   const isInIframe = window.self !== window.top;
 
   useEffect(() => {
-    // 1. Initial check: If token is in localStorage, use it immediately
     const storedToken = localStorage.getItem("accessToken");
     if (storedToken && !token) {
       console.log("Loading existing token from localStorage");
@@ -26,7 +27,6 @@ function App() {
   useEffect(() => {
     if (isInIframe) {
       console.log("App is running inside an iframe, notifying parent...");
-      // Notify parent .NET app that React is ready
       window.parent.postMessage({ type: "READY" }, "*");
     }
   }, [isInIframe]);
@@ -34,11 +34,7 @@ function App() {
   useEffect(() => {
     if (isInIframe) {
       const handleMessage = async (event: MessageEvent) => {
-        // SECURITY NOTE: In production, uncomment and set your allowed origin
-        // if (event.origin !== "https://your-parent-app.com") return;
-
         if (event.data && event.data.accessToken) {
-          // Use the current token value from state
           if (token?.raw === event.data.accessToken) {
             console.log("Received same token, skipping validation.");
             return;
@@ -62,35 +58,50 @@ function App() {
     }
   }, [isInIframe, token?.raw, validate]);
 
-  // const handleTestToken = async () => {
-  //   const testToken = import.meta.env.VITE_TEST_TOKEN;
-  //   try {
-  //     const payload = await validate(testToken);
-  //     setToken({ raw: testToken, payload });
-  //     localStorage.setItem("accessToken", testToken);
-  //     console.log("Test token validated successfully (Backend):", payload);
-  //   } catch (error) {
-  //     console.error("Test token validation failed:", error);
-  //   }
-  // };
-
-  // useEffect(() => {
-  //   if (!isInIframe) {
-  //     handleTestToken();
-  //   }
-  // }, [isInIframe]);
+  const mockToken = {
+    raw: import.meta.env.VITE_TEST_TOKEN,
+    payload: {
+      sub: "237",
+      iat: "1775114120",
+      nameid: "mrn004",
+      sid: "acc004",
+      nbf: 1775114120,
+      exp: 1775115920,
+      iss: "SAINCE",
+      aud: "TECHSTAUNCH",
+    },
+  };
 
   return (
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <DraftProvider syncToken={token?.raw} syncPayload={token?.payload}>
-          <Routes>
-            <Route path="/" element={<DraftSummary />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </DraftProvider>
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <DraftProvider
+                syncToken={token?.raw}
+                syncPayload={token?.payload}
+              >
+                <DraftSummary />
+              </DraftProvider>
+            }
+          />
+          <Route
+            path="/test"
+            element={
+              <DraftProvider
+                syncToken={mockToken.raw}
+                syncPayload={mockToken.payload}
+              >
+                <DraftSummary />
+              </DraftProvider>
+            }
+          />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </BrowserRouter>
     </TooltipProvider>
   );
