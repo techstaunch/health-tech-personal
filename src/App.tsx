@@ -63,8 +63,8 @@ function App() {
     payload: {
       sub: "237",
       iat: "1775114120",
-      nameid: "mrn004",
-      sid: "acc004",
+      nameid: "acc003",
+      sid: "acc003",
       nbf: 1775114120,
       exp: 1775115920,
       iss: "SAINCE",
@@ -79,7 +79,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route
-            path="/test"
+            path="/"
             element={
               <DraftProvider
                 syncToken={token?.raw}
@@ -90,7 +90,7 @@ function App() {
             }
           />
           <Route
-            path="/"
+            path="/test"
             element={
               <DraftProvider
                 syncToken={mockToken.raw}
