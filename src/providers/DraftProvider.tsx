@@ -2,6 +2,7 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -136,20 +137,16 @@ export const DraftProvider: React.FC<{
 
   const isSigned = !!signoff;
 
-  const [accessToken, setAccessToken] = useState<string | null>(
-    localStorage.getItem("accessToken"),
-  );
+  const [accessToken, setAccessToken] = useState<string | null>(null);
 
   // Sync token and identity from props (e.g., from App.tsx/iframe)
-  React.useEffect(() => {
+  useEffect(() => {
     if (syncToken) {
-      console.log('syncToken', syncToken);
       setAccessToken(syncToken);
-      localStorage.setItem("accessToken", syncToken);
     }
   }, [syncToken]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (syncPayload) {
       // payload contains nameid (MRN), sid (accountNumber), sub (userId)
       console.log('syncPayload', syncPayload);
