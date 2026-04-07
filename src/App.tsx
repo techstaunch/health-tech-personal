@@ -17,14 +17,6 @@ function App() {
   const isInIframe = window.self !== window.top;
 
   useEffect(() => {
-    const storedToken = localStorage.getItem("accessToken");
-    if (storedToken && !token) {
-      console.log("Loading existing token from localStorage");
-      setToken({ raw: storedToken, payload: null });
-    }
-  }, []);
-
-  useEffect(() => {
     if (isInIframe) {
       console.log("App is running inside an iframe, notifying parent...");
       window.parent.postMessage({ type: "READY" }, "*");
@@ -44,7 +36,6 @@ function App() {
           try {
             const payload = await validate(event.data.accessToken);
             setToken({ raw: event.data.accessToken, payload });
-            localStorage.setItem("accessToken", event.data.accessToken);
           } catch (error) {
             console.error("Failed to validate token from parent app");
           }
