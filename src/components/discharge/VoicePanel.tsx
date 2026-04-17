@@ -8,9 +8,10 @@ interface VoicePanelProps {
   open: boolean;
   onClose: () => void;
   onTranscript: (text: string) => void;
+  anchorElement?: HTMLElement | null;
 }
 
-export const VoicePanel = ({ open, onClose, onTranscript }: VoicePanelProps) => {
+export const VoicePanel = ({ open, onClose, onTranscript, anchorElement }: VoicePanelProps) => {
   const {
     isRecording,
     isPaused,
@@ -30,6 +31,7 @@ export const VoicePanel = ({ open, onClose, onTranscript }: VoicePanelProps) => 
   } = useVoice({ onTranscript, onClose });
 
   const [editedTranscript, setEditedTranscript] = useState(transcript || "");
+  const [position, setPosition] = useState({ top: 0, left: 0 });
 
   useEffect(() => {
     if (transcript) {
@@ -37,14 +39,51 @@ export const VoicePanel = ({ open, onClose, onTranscript }: VoicePanelProps) => 
     }
   }, [transcript]);
 
+  // Calculate position based on anchor element
+  useEffect(() => {
+    if (open && anchorElement) {
+      const rect = anchorElement.getBoundingClientRect();
+      const panelWidth = 288; // w-72 = 18rem = 288px
+      const panelHeight = 400; // approximate height
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      // Position to the right of the pencil button
+      let left = rect.right + 12; // 12px gap
+      let top = rect.top;
+
+      // If panel would go off right edge, position to the left instead
+      if (left + panelWidth > viewportWidth - 16) {
+        left = rect.left - panelWidth - 12;
+      }
+
+      // If panel would go off bottom, adjust top position
+      if (top + panelHeight > viewportHeight - 16) {
+        top = Math.max(16, viewportHeight - panelHeight - 16);
+      }
+
+      // If panel would go off top, adjust
+      if (top < 16) {
+        top = 16;
+      }
+
+      setPosition({ top, left });
+    }
+  }, [open, anchorElement]);
+
   if (!open) return null;
+
+  const panelStyle = anchorElement
+    ? { position: 'fixed' as const, top: `${position.top}px`, left: `${position.left}px` }
+    : { position: 'absolute' as const, top: '56px', right: '16px' };
 
   return (
     // Transparent overlay — click outside to close
     <div className="fixed inset-0 z-50" onClick={handleCancel}>
-      {/* Popup anchored below header, top-right near mic button */}
+      {/* Popup positioned next to pencil button or top-right */}
       <div
-        className="absolute top-14 right-4 w-72 bg-card border border-border rounded-xl shadow-xl overflow-hidden"
+        className="w-72 bg-card border border-border rounded-xl shadow-xl overflow-hidden"
+        style={panelStyle}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

@@ -125,6 +125,7 @@ export const useDraftSummary = () => {
     setOpenSignoff,
     handleSignoffConfirm,
     userId,
+    discardInputHistory,
   } = useDraft();
 
   const [editor, setEditor] = useState<any>(null);
@@ -280,11 +281,15 @@ export const useDraftSummary = () => {
 
   const handleDiscard = useCallback(async () => {
     try {
+      // If there's an inputHistoryId from the last agent invocation, discard it
+      if (lastEdits?.inputHistoryId) {
+        await discardInputHistory(lastEdits.inputHistoryId);
+      }
       await discardDraft();
     } catch (err: any) {
       toast.error(err.message);
     }
-  }, [discardDraft]);
+  }, [discardDraft, discardInputHistory, lastEdits]);
 
   const handleContentChange = useCallback((newContent: string) => {
     setContent(newContent);
