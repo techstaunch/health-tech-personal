@@ -5,8 +5,8 @@ import DraftSummaryHeader from "@/components/draft-summary/DraftSummaryHeader";
 import { useDraftSummary } from "@/components/draft-summary/hooks/useDraftSummary";
 import RichtextEditor from "@/components/draft-summary/RichtextEditor";
 import { toast } from "sonner";
+import { useState } from "react";
 // import SignoffModal from "./SignoffModal";
-
 const DraftSummary = () => {
   const {
     content,
@@ -54,7 +54,7 @@ const DraftSummary = () => {
     patientId,
     accountNumber,
   } = useDraftSummary();
-
+  const [voiceAnchorElement, setVoiceAnchorElement] = useState<HTMLElement | null>(null);
   const isContentLoading =
     isInlineSaving ||
     isDiscarding ||
@@ -63,7 +63,6 @@ const DraftSummary = () => {
     isPreviewing ||
     isPreparing ||
     loading; // loading from hook represents invokeAgent state
-
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <DraftSummaryHeader
@@ -73,6 +72,7 @@ const DraftSummary = () => {
             toast.error("Please select a section first");
             return;
           }
+          setVoiceAnchorElement(null); // No anchor for header button
           setShowVoice(true);
         }}
         onSave={handleSave}
@@ -96,7 +96,6 @@ const DraftSummary = () => {
         patientId={patientId || undefined}
         accountNumber={accountNumber || undefined}
       />
-
       <main className="flex-1 p-4 md:p-8 overflow-auto flex justify-center bg-muted/10">
         <div className="w-full max-w-4xl bg-card border rounded-xl shadow-lg p-6 md:p-10 relative">
           <RichtextEditor
@@ -109,19 +108,21 @@ const DraftSummary = () => {
             onSectionSelect={setSelectedSectionId}
             editable={!isSigned}
             voiceDisabled={!canEnableVoice || isContentLoading || isSigned}
+            onOpenVoice={(anchorElement) => {
+              setVoiceAnchorElement(anchorElement || null);
+              setShowVoice(true);
+            }}
             signoff={signoff}
             isCurrent={
               previewVersion ? previewVersion === currentVersion : true
             }
             signedBy={signoff?.signedBy}
           />
-
           {isSigned && (
             <div className="absolute inset-0 rounded-xl cursor-default" />
           )}
         </div>
       </main>
-
       <AlertDialog
         open={showInlineConfirm}
         onOpenChange={setShowInlineConfirm}
@@ -133,7 +134,6 @@ const DraftSummary = () => {
           actionText: "Save version",
         }}
       />
-
       <AlertDialog
         open={openSignoff}
         onOpenChange={setOpenSignoff}
@@ -144,15 +144,14 @@ const DraftSummary = () => {
           actionText: "Sign off",
         }}
       />
-
       {showVoice && (
         <VoicePanel
           onTranscript={handleTranscript}
           onClose={() => setShowVoice(false)}
           open={showVoice}
+          anchorElement={voiceAnchorElement}
         />
       )}
-
       {showDiff && (
         <div className="fixed bottom-0 left-0 right-0 z-40 shadow-[0_-4px_24px_rgba(0,0,0,0.08)]">
           <EditDiffViewer
@@ -167,5 +166,4 @@ const DraftSummary = () => {
     </div>
   );
 };
-
 export default DraftSummary;

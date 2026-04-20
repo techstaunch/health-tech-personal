@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { BookOpen, Mic, Save, Signature, Wand2 } from "lucide-react";
+import { useDraft } from "@/providers/DraftProvider";
+import { BookOpen, History, Mic, Save, Signature, Wand2 } from "lucide-react";
 import { useState } from "react";
 import ReferenceViewer from "../discharge/ReferenceViewer";
 import VersionHistoryDropdown, {
@@ -7,6 +8,7 @@ import VersionHistoryDropdown, {
 } from "../discharge/VersionHistoryDropdown";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import DraftSummaryToolbar from "./DraftSummaryToolbar";
+import InputHistoryPanel from "./InputHistoryPanel";
 
 interface Reference {
   id: string;
@@ -53,6 +55,8 @@ const DraftSummaryHeader = ({
   ...props
 }: DraftSummaryHeaderProps) => {
   const [showRefs, setShowRefs] = useState(false);
+  const [showInputHistory, setShowInputHistory] = useState(false);
+  const { accessToken, userId } = useDraft();
 
   return (
     <>
@@ -112,6 +116,29 @@ const DraftSummaryHeader = ({
               signoff={signoff}
               disabled={isContentLoading}
             />
+
+            {patientId && accountNumber && (
+              <div className="relative">
+                <Button
+                  variant={showInputHistory ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={() => setShowInputHistory((v) => !v)}
+                  className="gap-2 rounded-full transition-colors"
+                >
+                  <History className="h-4 w-4 text-muted-foreground" />
+                  <span>Input History</span>
+                </Button>
+
+                <InputHistoryPanel
+                  open={showInputHistory}
+                  onClose={() => setShowInputHistory(false)}
+                  patientId={patientId}
+                  accountNumber={accountNumber}
+                  userId={userId}
+                  accessToken={accessToken}
+                />
+              </div>
+            )}
 
             {references.length > 0 && (
               <div className="relative">

@@ -7,7 +7,6 @@ import StarterKit from "@tiptap/starter-kit";
 import { useEffect } from "react";
 import HeadingNodeView from "./HeadingNodeView";
 import { SelectionContext } from "./SelectionContext";
-
 interface RichtextEditorProps {
   content: string;
   onChange: (content: string) => void;
@@ -21,8 +20,8 @@ interface RichtextEditorProps {
   signedBy?: string;
   isCurrent: boolean;
   voiceDisabled?: boolean;
+  onOpenVoice?: (anchorElement?: HTMLElement) => void;
 }
-
 const HeadingWithId = Heading.extend({
   addAttributes() {
     return {
@@ -37,7 +36,6 @@ const HeadingWithId = Heading.extend({
           };
         },
       },
-
       "data-section-position": {
         default: null,
         parseHTML: (element) =>
@@ -55,7 +53,6 @@ const HeadingWithId = Heading.extend({
     return ReactNodeViewRenderer(HeadingNodeView);
   },
 });
-
 const RichtextEditor = ({
   content,
   onChange,
@@ -66,10 +63,10 @@ const RichtextEditor = ({
   onSectionSelect = () => { },
   editable = true,
   voiceDisabled = false,
+  onOpenVoice = () => { },
 }: RichtextEditorProps) => {
   const editor = useEditor({
     editable: editable && !isPreparing,
-
     extensions: [
       StarterKit.configure({
         heading: false,
@@ -83,14 +80,12 @@ const RichtextEditor = ({
       }),
     ],
     content,
-
     onUpdate: ({ editor }) => {
       if (onChange) {
         onChange(editor.getHTML());
       }
       onDocChanged?.();
     },
-
     editorProps: {
       attributes: {
         class:
@@ -98,123 +93,157 @@ const RichtextEditor = ({
       },
     },
   });
-
   useEffect(() => {
     if (editor) onEditorReady(editor);
   }, [editor, onEditorReady]);
-
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
       editor.commands.setContent(content, { emitUpdate: false });
     }
   }, [content, editor]);
-
   useEffect(() => {
     if (!editor) return;
     editor.setEditable(editable && !isPreparing);
   }, [editor, editable, isPreparing]);
-
   return (
     <div className="relative w-full h-full">
       <SelectionContext.Provider
-        value={{ selectedSectionId, setSelectedSectionId: onSectionSelect, voiceDisabled }}
+        value={{ selectedSectionId, setSelectedSectionId: onSectionSelect, voiceDisabled, onOpenVoice }}
       >
         <style>{`
+          /* Heading with edit button */
           .heading-with-edit {
             display: flex;
             align-items: flex-start;
             gap: 12px;
-            padding: 8px 12px;
-            margin: -8px -12px;
+            padding: 12px 16px;
+            margin: 0 -16px 8px -16px;
             border-radius: 8px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.25s ease;
             position: relative;
+            border-left: 3px solid transparent;
           }
+          
+          /* Selected heading */
           .heading-with-edit.selected-section {
-            background-color: var(--accent, rgba(155, 114, 203, 0.05));
-            box-shadow: 0 0 0 1px var(--primary, rgba(155, 114, 203, 0.2));
+            background-color: rgba(99, 102, 241, 0.08);
+            border-left-color: rgb(99, 102, 241);
+            box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.25);
           }
+          
           .heading-content {
             flex: 1;
             line-height: inherit;
           }
+          
+          /* Edit button (pencil icon) - ALWAYS VISIBLE */
           .heading-edit-btn {
             position: relative;
             z-index: 1;
-            opacity: 0.3;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            background: var(--background, #fff);
-            border: 1px solid var(--border, #e2e8f0);
+            opacity: 0.5;
+            transition: all 0.25s ease;
+            background: #ffffff;
+            border: 2px solid #e2e8f0;
             cursor: pointer;
-            width: 32px;
-            height: 32px;
+            width: 34px;
+            height: 34px;
             margin-top: 2px;
             border-radius: 50%;
-            color: var(--muted-foreground, #64748b);
+            color: #94a3b8;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
           }
+          
+          /* Bright animated gradient background */
           .heading-edit-btn::before {
             content: '';
             position: absolute;
-            inset: -2px;
+            inset: -3px;
             background: conic-gradient(
               from 0deg,
-              #4285F4,
-              #9B72CB,
-              #D96570,
-              #F48120,
-              #4285F4
+              #6366F1,
+              #8B5CF6,
+              #A855F7,
+              #C084FC,
+              #E879F9,
+              #F0ABFC,
+              #6366F1
             );
             border-radius: 50%;
             z-index: -2;
             opacity: 0;
             transition: opacity 0.3s ease;
           }
+          
+          /* White background to create ring effect */
           .heading-edit-btn::after {
             content: '';
             position: absolute;
             inset: 0;
-            background: var(--background, #fff);
+            background: #ffffff;
             border-radius: 50%;
             z-index: -1;
           }
+          
+          /* Hover state - make more visible */
           .heading-edit-btn:hover {
-            opacity: 1;
-            color: var(--foreground, #333);
-            border-color: var(--primary, #9B72CB);
-            transform: scale(1.1);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            opacity: 1 !important;
+            color: rgb(99, 102, 241);
+            border-color: rgb(99, 102, 241);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
           }
+          
+          /* Show button more prominently on heading hover */
           .heading-with-edit:hover .heading-edit-btn {
-            opacity: 1;
+            opacity: 0.85;
+            color: #64748b;
           }
+          
+          /* Selected section button state - FULLY VISIBLE WITH ANIMATION */
+          .heading-with-edit.selected-section .heading-edit-btn {
+            opacity: 1 !important;
+            color: rgb(99, 102, 241);
+            border-color: transparent;
+            box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+          }
+          
+          /* Animated gradient on selected */
           .heading-with-edit.selected-section .heading-edit-btn::before {
             opacity: 1;
-            animation: rotate-ai 3s linear infinite;
-            filter: blur(4px);
+            animation: rotate-gradient 2.5s linear infinite;
           }
-          .heading-with-edit.selected-section .heading-edit-btn {
-            opacity: 1;
-            color: var(--primary, #9B72CB);
-            border-color: transparent;
-            animation: pulse-ai 2s infinite ease-in-out;
-            box-shadow: 0 0 15px var(--primary, rgba(155, 114, 203, 0.4));
+          
+          /* Highlight section content - applied via JavaScript */
+          .section-content-highlighted {
+            background-color: rgba(99, 102, 241, 0.04) !important;
+            padding: 12px 16px !important;
+            margin-left: -16px !important;
+            margin-right: -16px !important;
+            border-left: 3px solid rgba(99, 102, 241, 0.3) !important;
+            border-radius: 0 !important;
+            transition: all 0.25s ease !important;
           }
-          @keyframes rotate-ai {
+          
+          /* First element after heading */
+          .section-content-highlighted:first-of-type {
+            margin-top: 0 !important;
+          }
+          
+          /* Last element before next heading */
+          .section-content-highlighted:last-of-type {
+            margin-bottom: 16px !important;
+            border-radius: 0 0 6px 6px !important;
+          }
+          
+          @keyframes rotate-gradient {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
           }
-          @keyframes pulse-ai {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); }
-          }
         `}</style>
-
         {isPreparing && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/70 backdrop-blur-sm">
             <div className="flex items-center gap-2 text-muted-foreground text-sm">
@@ -223,11 +252,9 @@ const RichtextEditor = ({
             </div>
           </div>
         )}
-
         <EditorContent editor={editor} />
       </SelectionContext.Provider>
     </div>
   );
 };
-
 export default RichtextEditor;

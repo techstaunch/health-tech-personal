@@ -21,6 +21,7 @@ export interface AgentResult {
   edits: PatchResult[];
   needsClarification: boolean;
   dirty: boolean;
+  inputHistoryId?: string | null;
 }
 
 export interface HistoryItem {
@@ -100,6 +101,7 @@ interface DraftContextValue {
   accessToken: string | null;
   setAccessToken: (token: string | null) => void;
   userId: string;
+  discardInputHistory: (inputHistoryId: string) => Promise<void>;
 }
 
 const DraftContext = createContext<DraftContextValue | null>(null);
@@ -269,6 +271,7 @@ export const DraftProvider: React.FC<{
             accountNumber,
             messages,
             sectionId: sectionId ?? undefined,
+            createdBy: userId,
           }),
         });
 
@@ -284,7 +287,7 @@ export const DraftProvider: React.FC<{
         setIsInvoking(false);
       }
     },
-    [api, patientId, accountNumber],
+    [api, patientId, accountNumber, userId],
   );
 
   const commitDraft = useCallback(
@@ -331,6 +334,19 @@ export const DraftProvider: React.FC<{
       setIsDiscarding(false);
     }
   }, [patientId, accountNumber, refresh]);
+
+  const discardInputHistory = useCallback(
+    async (inputHistoryId: string) => {
+      try {
+        await api(`/input-history/${inputHistoryId}/discard`, {
+          method: "PATCH",
+        });
+      } catch (err: any) {
+        console.error("Failed to discard input history:", err?.message);
+      }
+    },
+    [api],
+  );
 
   const rollback = useCallback(
     async (version: string) => {
@@ -475,6 +491,7 @@ export const DraftProvider: React.FC<{
       accessToken,
       setAccessToken,
       userId,
+      discardInputHistory,
     }),
     [
       patientId,
@@ -506,6 +523,7 @@ export const DraftProvider: React.FC<{
       saveInline,
       accessToken,
       userId,
+      discardInputHistory,
     ],
   );
 
