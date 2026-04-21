@@ -51,8 +51,6 @@
 
                 const iframe = document.getElementById('health-tech-iframe');
 
-                const token = '%VITE_TEST_TOKEN%';
-
                 if (iframe && iframe.contentWindow) {
                     iframe.contentWindow.postMessage({ accessToken: token }, '*');
                 }

@@ -60,7 +60,7 @@ const DraftSummaryHeader = ({
 
   return (
     <>
-      <header className="flex flex-col lg:flex-row lg:items-center justify-between px-4 py-3 border-b bg-card shadow-sm sticky top-0 z-10 gap-4 lg:gap-0">
+      <header className="flex flex-col lg:flex-row lg:items-center justify-between px-4 py-3 border-b bg-card shadow-sm sticky top-0 z-20 gap-4 lg:gap-0">
         <div className="flex flex-wrap items-center gap-3">
           <DraftSummaryToolbar editor={editor} />
 

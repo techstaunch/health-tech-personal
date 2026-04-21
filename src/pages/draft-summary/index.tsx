@@ -64,7 +64,7 @@ const DraftSummary = () => {
     isPreparing ||
     loading; // loading from hook represents invokeAgent state
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col h-screen bg-background overflow-hidden">
       <DraftSummaryHeader
         onRefresh={handleRefresh}
         onVoiceClick={() => {
@@ -96,8 +96,8 @@ const DraftSummary = () => {
         patientId={patientId || undefined}
         accountNumber={accountNumber || undefined}
       />
-      <main className="flex-1 p-4 md:p-8 overflow-auto flex justify-center bg-muted/10">
-        <div className="w-full max-w-4xl bg-card border rounded-xl shadow-lg p-6 md:p-10 relative">
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto flex justify-center items-start bg-muted/10 min-h-0">
+        <div className="w-full max-w-4xl bg-card border rounded-xl shadow-lg p-6 md:p-10 relative self-start">
           <RichtextEditor
             content={content}
             onChange={handleContentChange}
@@ -153,7 +153,7 @@ const DraftSummary = () => {
         />
       )}
       {showDiff && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 shadow-[0_-4px_24px_rgba(0,0,0,0.08)]">
+        <div className="border-t shadow-[0_-4px_24px_rgba(0,0,0,0.08)] flex-shrink-0">
           <EditDiffViewer
             editResponse={lastEdits as any}
             loading={loading}

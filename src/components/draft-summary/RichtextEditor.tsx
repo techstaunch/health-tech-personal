@@ -1,3 +1,4 @@
+import { EditorState } from "@tiptap/pm/state";
 import type { SignoffData } from "@/providers/DraftProvider";
 import Heading from "@tiptap/extension-heading";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -99,6 +100,15 @@ const RichtextEditor = ({
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
       editor.commands.setContent(content, { emitUpdate: false });
+
+      // Reset the editor state to clear undo/redo history so that
+      // pressing undo after content load doesn't wipe the content.
+      const newState = EditorState.create({
+        doc: editor.state.doc,
+        plugins: editor.state.plugins,
+        selection: editor.state.selection,
+      });
+      editor.view.updateState(newState);
     }
   }, [content, editor]);
   useEffect(() => {
@@ -245,8 +255,9 @@ const RichtextEditor = ({
           }
         `}</style>
         {isPreparing && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/70 backdrop-blur-sm">
-            <div className="flex items-center gap-2 text-muted-foreground text-sm">
+          <div className="absolute inset-0 z-10 flex items-center justify-center" style={{ isolation: 'isolate' }}>
+            <div className="absolute inset-0 bg-background/80 rounded-xl" />
+            <div className="relative flex items-center gap-2 text-muted-foreground text-sm z-10">
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
               Fetching summary...
             </div>

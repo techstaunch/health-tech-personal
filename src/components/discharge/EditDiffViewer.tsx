@@ -277,14 +277,6 @@ const EditDiffViewer: React.FC<Props> = ({
             <Button size="sm" className="h-7 text-sm" onClick={handleAccept}>
               Accept
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={onClose}
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </div>
         </div>
 
